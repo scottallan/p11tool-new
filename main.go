@@ -160,13 +160,16 @@ func main() {
 	case "generateSecret":
 		if *keyType == "GENERIC_SECRET" {
 			//Generate Key
-			ObjLabel := "tKey"
 		        aesKey, err := p11w.CreateAesKey(*keyLabel, *keyLen)
 			exitWhenError(err)
                         testMsg := []byte("someRandomString")
-			hmac, err := p11w.SignHmacSha256(aesKey, testMsg)
+			hmac, err := p11w.SignHmacSha384(aesKey, testMsg)
 			exitWhenError(err)
-                        fmt.Printf("Successfully tested CKM_SHA256_HMAC on key with label: %s \n HMAC %x\n", ObjLabel, hmac)
+                        fmt.Printf("Successfully tested CKM_SHA384_HMAC on key with label: %s \n HMAC %x\n", *keyLabel, hmac)
+		        p11w.ListObjects(
+			     []*pkcs11.Attribute{},
+			     50,
+		        )
 
 		}
 

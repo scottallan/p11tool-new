@@ -298,14 +298,14 @@ func (p11w *Pkcs11Wrapper) CreateAesKey(objectLabel string, keyLen int) (aesKey 
         return
 }
 
-/* test CKM_SHA256_HMAC signing */
-func (p11w *Pkcs11Wrapper) SignHmacSha256(o pkcs11.ObjectHandle, message []byte) (hmac []byte, err error) {
+/* test CKM_SHA384_HMAC signing */
+func (p11w *Pkcs11Wrapper) SignHmacSha384(o pkcs11.ObjectHandle, message []byte) (hmac []byte, err error) {
 
         // start the signing
         err = p11w.Context.SignInit(
                 p11w.Session,
                 []*pkcs11.Mechanism{
-                        pkcs11.NewMechanism(pkcs11.CKM_SHA256_HMAC, nil),
+                        pkcs11.NewMechanism(pkcs11.CKM_SHA384_HMAC, nil),
                 },
                 o,
         )
