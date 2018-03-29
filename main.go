@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	pw "github.com/gbolo/go-util/p11tool/pkcs11wrapper"
+	pw "github.com/scottallan/p11tool-new/pkcs11wrapper"
 )
 
 const (
@@ -68,7 +68,9 @@ func main() {
 	slotPin := flag.String("pin", "98765432", "Slot PIN")
 	action := flag.String("action", "list", "list,import,generateAndImport,generateSecret,getSKI")
 	keyFile := flag.String("keyFile", "/some/dir/key.pem", "path to key you want to import or getSKI")
-	keyType := flag.String("keyType", "EC", "Type of key (EC,RSA,SECRET)")
+	keyType := flag.String("keyType", "EC", "Type of key (EC,RSA,GENERIC_SECRET,AES)")
+        keyLen := flag.Int("keyLen", 32, "Key Length for CKK_GENERIC_SECRET (32,48,...)")
+	keyLabel := flag.String("keyLabel", "tmpkey", "Label of CKK_GENERIC_SECRET")
 
 	flag.Parse()
 
@@ -156,10 +158,10 @@ func main() {
 		}
 
 	case "generateSecret":
-		if *keyType == "SECRET" {
+		if *keyType == "GENERIC_SECRET" {
 			//Generate Key
 			ObjLabel := "tKey"
-		        aesKey, err := p11w.CreateAesKey(ObjLabel)
+		        aesKey, err := p11w.CreateAesKey(*keyLabel, *keyLen)
 			exitWhenError(err)
                         testMsg := []byte("someRandomString")
 			hmac, err := p11w.SignHmacSha256(aesKey, testMsg)

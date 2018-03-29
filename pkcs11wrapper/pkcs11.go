@@ -222,7 +222,7 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 }
 
 /* return a set of attributes that we require for our aes key */
-func (p11w *Pkcs11Wrapper) GetAesPkcs11Template(objectLabel string) (AesPkcs11Template []*pkcs11.Attribute) {
+func (p11w *Pkcs11Wrapper) GetAesPkcs11Template(objectLabel string, keyLen int) (AesPkcs11Template []*pkcs11.Attribute) {
 
         // default CKA_KEY_TYPE
         pkcs11_keytype := pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_AES)
@@ -242,7 +242,7 @@ func (p11w *Pkcs11Wrapper) GetAesPkcs11Template(objectLabel string) (AesPkcs11Te
                 pkcs11_keytype = pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET)
         }
         // Overrides Key Length
-        AesKeyLength := 32
+        AesKeyLength := keyLen 
         pkcs11_keylen := os.Getenv("SECURITY_PROVIDER_CONFIG_KLEN")
         if len(pkcs11_keylen) > 0 {
                 KeyLength, err := strconv.Atoi(pkcs11_keylen)
@@ -266,7 +266,7 @@ func (p11w *Pkcs11Wrapper) GetAesPkcs11Template(objectLabel string) (AesPkcs11Te
         return
 }
 
-func (p11w *Pkcs11Wrapper) CreateAesKey(objectLabel string) (aesKey pkcs11.ObjectHandle, err error) {
+func (p11w *Pkcs11Wrapper) CreateAesKey(objectLabel string, keyLen int) (aesKey pkcs11.ObjectHandle, err error) {
 
         // default mech CKM_AES_KEY_GEN
         pkcs11_mech := pkcs11.NewMechanism(pkcs11.CKM_AES_KEY_GEN, nil)
@@ -280,7 +280,7 @@ func (p11w *Pkcs11Wrapper) CreateAesKey(objectLabel string) (aesKey pkcs11.Objec
         }
 
         // get the required attributes
-        requiredAttributes := p11w.GetAesPkcs11Template(objectLabel)
+        requiredAttributes := p11w.GetAesPkcs11Template(objectLabel, keyLen)
 
         // generate the aes key
         aesKey, err = p11w.Context.GenerateKey(
