@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/miekg/pkcs11"
@@ -220,108 +219,6 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 
 	}
 }
-
-/* return a set of attributes that we require for our aes key */
-func (p11w *Pkcs11Wrapper) GetAesPkcs11Template(objectLabel string, keyLen int) (AesPkcs11Template []*pkcs11.Attribute) {
-
-        // default CKA_KEY_TYPE
-        pkcs11_keytype := pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_AES)
-
-        // Overrides env first, then autodetect from vendor
-        switch {
-        case CaseInsensitiveContains(os.Getenv("SECURITY_PROVIDER_CONFIG_KEYTYPE"), "CKK_GENERIC_SECRET"):
-                pkcs11_keytype = pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET)
-        case CaseInsensitiveContains(p11w.Library.Info.ManufacturerID, "softhsm") &&
-                p11w.Library.Info.LibraryVersion.Major > 1 &&
-                p11w.Library.Info.LibraryVersion.Minor > 2:
-                // matches softhsm versions greater than 2.2 (scott patched 2.3)
-                pkcs11_keytype = pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET)
-        case CaseInsensitiveContains(p11w.Library.Info.ManufacturerID, "ncipher"):
-                pkcs11_keytype = pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_SHA256_HMAC)
-        case CaseInsensitiveContains(p11w.Library.Info.ManufacturerID, "SafeNet"):
-                pkcs11_keytype = pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET)
-        }
-        // Overrides Key Length
-        AesKeyLength := keyLen 
-        pkcs11_keylen := os.Getenv("SECURITY_PROVIDER_CONFIG_KLEN")
-        if len(pkcs11_keylen) > 0 {
-                KeyLength, err := strconv.Atoi(pkcs11_keylen)
-                if err != nil {
-                  return
-                }
-                AesKeyLength = KeyLength
-        }
-
-        // Scott's Reference
-        // default template common to all manufactures
-        AesPkcs11Template = []*pkcs11.Attribute{
-                // common to all
-                pkcs11.NewAttribute(pkcs11.CKA_LABEL, objectLabel),      /* Name of Key */
-                pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),             /* This key should persist */
-                pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, AesKeyLength), /* KeyLength */
-                pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
-                // vendor specific override
-                pkcs11_keytype,
-        }
-        return
-}
-
-func (p11w *Pkcs11Wrapper) CreateAesKey(objectLabel string, keyLen int) (aesKey pkcs11.ObjectHandle, err error) {
-
-        // default mech CKM_AES_KEY_GEN
-        pkcs11_mech := pkcs11.NewMechanism(pkcs11.CKM_AES_KEY_GEN, nil)
-
-        // Overrides env first, then autodetect from vendor
-        switch {
-        case CaseInsensitiveContains(os.Getenv("SECURITY_PROVIDER_CONFIG_MECH"), "CKM_GENERIC_SECRET_KEY_GEN"):
-                pkcs11_mech = pkcs11.NewMechanism(pkcs11.CKM_GENERIC_SECRET_KEY_GEN, nil)
-        case CaseInsensitiveContains(p11w.Library.Info.ManufacturerID, "SafeNet"):
-                pkcs11_mech = pkcs11.NewMechanism(pkcs11.CKM_GENERIC_SECRET_KEY_GEN, nil)
-        }
-
-        // get the required attributes
-        requiredAttributes := p11w.GetAesPkcs11Template(objectLabel, keyLen)
-
-        // generate the aes key
-        aesKey, err = p11w.Context.GenerateKey(
-                p11w.Session,
-                []*pkcs11.Mechanism{
-                        // vendor specific
-                        pkcs11_mech,
-                },
-                requiredAttributes,
-        )
-        if err != nil {
-                ExitWithMessage("GenerateKey", err)
-        }
-
-        return
-}
-
-/* test CKM_SHA384_HMAC signing */
-func (p11w *Pkcs11Wrapper) SignHmacSha384(o pkcs11.ObjectHandle, message []byte) (hmac []byte, err error) {
-
-        // start the signing
-        err = p11w.Context.SignInit(
-                p11w.Session,
-                []*pkcs11.Mechanism{
-                        pkcs11.NewMechanism(pkcs11.CKM_SHA384_HMAC, nil),
-                },
-                o,
-        )
-        if err != nil {
-                return
-        }
-
-        // do the signing
-        hmac, err = p11w.Context.Sign(p11w.Session, message)
-        if err != nil {
-                return
-        }
-
-        return
-}
-
 
 
 func DecodeCKACLASS(b byte) string {
