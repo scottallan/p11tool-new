@@ -157,6 +157,25 @@ func main() {
 			p11w.ImportECKey(ec)
 		}
 
+	case "SignHMAC384":
+	 pkcs11_attr := pkcs11.NewAttribute(pkcs11.CKA_LABEL, *keyLabel)
+	 p11w.ListObjects(
+		[]*pkcs11.Attribute{
+		pkcs11_attr,
+		},50,
+	 )
+	 o, _, err := p11w.FindObjects([]*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, *keyLabel),
+	 	},
+	   	1,
+	)
+	exitWhenError(err)
+	testMsg := []byte("someRandomString")
+	hmac, err := p11w.SignHmacSha384(o[0], testMsg)
+	exitWhenError(err)
+		fmt.Printf("successfully tested CKM_SHA384_HMAC on key with LABEL: %s\n HMAC %x\n", *keyLabel,hmac)
+
+
 	case "generateSecret":
 		if *keyType == "GENERIC_SECRET" {
 			//Generate Key
