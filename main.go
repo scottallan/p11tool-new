@@ -159,7 +159,7 @@ func main() {
 
 	case "SignHMAC384":
 		testMsg := []byte("someRandomString")
-		hmac, err := p11w.SignHmacSha384(*keyLabel, testMsg)
+		hmac, err := p11w.SignHmacSha384(pkcs11.ObjectHandle("test"), testMsg)
 		exitWhenError(err)
             fmt.Printf("Successfully tested CKM_SHA384_HMAC on key with label: %s \n HMAC %x\n", *keyLabel, hmac)
 
