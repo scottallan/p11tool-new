@@ -66,7 +66,7 @@ func main() {
 	pkcs11Library := flag.String("lib", "", "Location of pkcs11 library")
 	slotLabel := flag.String("slot", "ForFabric", "Slot Label")
 	slotPin := flag.String("pin", "98765432", "Slot PIN")
-	action := flag.String("action", "list", "list,import,generateAndImport,generateSecret,getSKI")
+	action := flag.String("action", "list", "list,import,generateAndImport,generateSecret,getSKI,SignHMAC384")
 	keyFile := flag.String("keyFile", "/some/dir/key.pem", "path to key you want to import or getSKI")
 	keyType := flag.String("keyType", "EC", "Type of key (EC,RSA,GENERIC_SECRET,AES)")
         keyLen := flag.Int("keyLen", 32, "Key Length for CKK_GENERIC_SECRET (32,48,...)")
@@ -156,6 +156,12 @@ func main() {
 			ec.Generate("P-256")
 			p11w.ImportECKey(ec)
 		}
+
+	case "SignHMAC384":
+		testMsg := []byte("someRandomString")
+		hmac, err := p11w.SignHmacSha384(*keyLabel, testMsg)
+		exitWhenError(err)
+            fmt.Printf("Successfully tested CKM_SHA384_HMAC on key with label: %s \n HMAC %x\n", *keyLabel, hmac)
 
 	case "generateSecret":
 		if *keyType == "GENERIC_SECRET" {
