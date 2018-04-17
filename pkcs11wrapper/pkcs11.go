@@ -187,6 +187,7 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 
 		// populate table data
 		for i, k := range objects {
+			var ckaValueLen []*pkcs11.Attribute 
 			al, err := p11w.Context.GetAttributeValue(
 				p11w.Session,
 				k,
@@ -202,8 +203,8 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 			if err != nil {
 				panic(err)
 			}
-			if al[2].value == 4 {
-				ckaValueLen, err := p11w.Context.GetAttributeValue(
+			if DecodeCKACLASS(al[2].Value[0]) == "CKO_SECRET_KEY" {
+				ckaValueLen, err = p11w.Context.GetAttributeValue(
 					p11w.Session,
 					k,
 					[]*pkcs11.Attribute{
@@ -216,7 +217,7 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 				}
 
 			} else {
-				ckaValueLen = nil
+				ckaValueLen = []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, 0),}
 			}
 
 			table.Append(
@@ -264,9 +265,9 @@ func DecodeCKAKEY(b byte) string {
 		return "CKK_GENERIC_SECRET"
 	case 31:
 		return "CKK_AES"
-	case "43"
+	case 43:
 		return "CKK_HMAC_256"
-	case "44"
+	case 44:
 		return "CKK_HMAC_384"
 	default:
 		return "UNKNOWN"
