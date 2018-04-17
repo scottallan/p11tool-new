@@ -208,7 +208,7 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 					p11w.Session,
 					k,
 					[]*pkcs11.Attribute{
-						pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, nil),
+						pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, nil),
 					},
 				) 
 			
@@ -227,8 +227,7 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 					fmt.Sprintf("%s", al[0].Value),
 					fmt.Sprintf("%x", al[1].Value),
 					DecodeCKAKEY(al[3].Value[0]),
-					//fmt.Sprintf("%d", al[4].Value),
-					fmt.Sprintf("%d", ckaValueLen),
+					fmt.Sprintf("%d", ckaValueLen[0].Value),
 				},
 			)
 		}
@@ -261,6 +260,8 @@ func DecodeCKACLASS(b byte) string {
 func DecodeCKAKEY(b byte) string {
 
 	switch b {
+	case 3:
+		return "CKK_ECDSA"
 	case 16:
 		return "CKK_GENERIC_SECRET"
 	case 31:
