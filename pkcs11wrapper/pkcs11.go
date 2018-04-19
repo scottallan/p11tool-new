@@ -3,6 +3,7 @@ package pkcs11wrapper
 import (
 	"crypto/elliptic"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -41,6 +42,33 @@ type Pkcs11Object struct {
 	CKA_CLASS string
 	CKA_LABEL string
 	CKA_ID    string
+}
+
+// maps used to convert object into human readable text
+var CKA_KEY_TYPE_MAP map[byte]string
+var CKA_CLASS_MAP map[uint]string
+
+func init() {
+
+	// set up values for CKA_KEY_TYPE
+	CKA_KEY_TYPE_MAP = map[byte]string{
+		pkcs11.CKK_GENERIC_SECRET: "CKK_GENERIC_SECRET",
+		pkcs11.CKK_AES:            "CKK_AES",
+		pkcs11.CKK_RSA:            "CKK_RSA",
+		pkcs11.CKK_ECDSA:          "CKK_ECDSA",
+		pkcs11.CKK_SHA256_HMAC:    "CKK_SHA256_HMAC",
+		pkcs11.CKK_SHA384_HMAC:    "CKK_SHA384_HMAC",
+		pkcs11.CKK_SHA512_HMAC:    "CKK_SHA512_HMAC",
+	}
+
+	// set up values for CKA_CLASS
+	CKA_CLASS_MAP = map[uint]string{
+		pkcs11.CKO_CERTIFICATE: "CKO_CERTIFICATE",
+		pkcs11.CKO_PUBLIC_KEY:  "CKO_PUBLIC_KEY",
+		pkcs11.CKO_PRIVATE_KEY: "CKO_PRIVATE_KEY",
+		pkcs11.CKO_SECRET_KEY:  "CKO_SECRET_KEY",
+		pkcs11.CKO_DATA:        "CKO_DATA",
+	}
 }
 
 // Initialize pkcs11 context
@@ -124,18 +152,18 @@ func (p11w *Pkcs11Wrapper) FindObjects(template []*pkcs11.Attribute, max int) (p
 /* Exit with message and code 1 */
 func ExitWithMessage(message string, err error) {
 
-        if err == nil {
-                fmt.Printf("\nFatal Error: %s\n", message)
-        } else {
-                fmt.Printf("\nFatal Error: %s\n%s\n", message, err)
-        }
-        os.Exit(1)
+	if err == nil {
+		fmt.Printf("\nFatal Error: %s\n", message)
+	} else {
+		fmt.Printf("\nFatal Error: %s\n%s\n", message, err)
+	}
+	os.Exit(1)
 }
 
 /* returns true if substr is in string s */
 func CaseInsensitiveContains(s, substr string) bool {
-        s, substr = strings.ToUpper(s), strings.ToUpper(substr)
-        return strings.Contains(s, substr)
+	s, substr = strings.ToUpper(s), strings.ToUpper(substr)
+	return strings.Contains(s, substr)
 }
 
 /* Return the slotID of token label */
@@ -192,7 +220,7 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 
 		// populate table data
 		for i, k := range objects {
-			var ckaValueLen []*pkcs11.Attribute 
+			var ckaValueLen []*pkcs11.Attribute
 			al, err := p11w.Context.GetAttributeValue(
 				p11w.Session,
 				k,
@@ -201,7 +229,7 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 					pkcs11.NewAttribute(pkcs11.CKA_ID, nil),
 					pkcs11.NewAttribute(pkcs11.CKA_CLASS, nil),
 					pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, nil),
-				//	pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, nil),
+					//	pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, nil),
 				},
 			)
 
@@ -215,15 +243,18 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 					[]*pkcs11.Attribute{
 						pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, nil),
 					},
-				) 
-			
+				)
+
 				if err != nil {
 					panic(err)
 				}
 
 			} else {
-				ckaValueLen = []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, 0),}
+				ckaValueLen = []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, 0)}
 			}
+
+			// CKA_VALUE_LEN returns an 8 byte slice, lets convert that into a uint64 (8x8 bits)
+			keyLength, _ := binary.Uvarint(ckaValueLen[0].Value[0:8])
 
 			table.Append(
 				[]string{
@@ -232,7 +263,7 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 					fmt.Sprintf("%s", al[0].Value),
 					fmt.Sprintf("%x", al[1].Value),
 					DecodeCKAKEY(al[3].Value[0]),
-					fmt.Sprintf("%d", ckaValueLen[0].Value),
+					fmt.Sprintf("%d", keyLength),
 				},
 			)
 		}
@@ -243,44 +274,28 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 	}
 }
 
+func DecodeCKAKEY(b byte) string {
+
+	name, present := CKA_KEY_TYPE_MAP[b]
+	if present {
+		return name
+	} else {
+		return "UNKNOWN"
+	}
+
+}
 
 func DecodeCKACLASS(b byte) string {
 
-	switch b {
-	case 0:
-		return "CKO_DATA"
-	case 1:
-		return "CKO_CERTIFICATE"
-	case 2:
-		return "CKO_PUBLIC_KEY"
-	case 3:
-		return "CKO_PRIVATE_KEY"
-	case 4:
-		return "CKO_SECRET_KEY"
-	default:
+	key := uint(b)
+	name, present := CKA_CLASS_MAP[key]
+	if present {
+		return name
+	} else {
 		return "UNKNOWN"
 	}
 
 }
-func DecodeCKAKEY(b byte) string {
-
-	switch b {
-	case 3:
-		return "CKK_ECDSA"
-	case 16:
-		return "CKK_GENERIC_SECRET"
-	case 31:
-		return "CKK_AES"
-	case 43:
-		return "CKK_HMAC_256"
-	case 44:
-		return "CKK_HMAC_384"
-	default:
-		return "UNKNOWN"
-	}
-
-}
-
 
 func (p11w *Pkcs11Wrapper) ImportECKey(ec EcdsaKey) (err error) {
 
