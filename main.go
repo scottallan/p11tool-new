@@ -53,13 +53,12 @@ func searchForLib(paths string) (firstFound string, err error) {
 
 	return
 }
+
 /* returns true if substr is in string s */
 func CaseInsensitiveContains(s, substr string) bool {
-        s, substr = strings.ToUpper(s), strings.ToUpper(substr)
-        return strings.Contains(s, substr)
+	s, substr = strings.ToUpper(s), strings.ToUpper(substr)
+	return strings.Contains(s, substr)
 }
-
-
 
 func main() {
 
@@ -70,7 +69,7 @@ func main() {
 	action := flag.String("action", "list", "list,import,generateAndImport,generateSecret,getSKI,SignHMAC384")
 	keyFile := flag.String("keyFile", "/some/dir/key.pem", "path to key you want to import or getSKI")
 	keyType := flag.String("keyType", "EC", "Type of key (EC,RSA,GENERIC_SECRET,AES)")
-        keyLen := flag.Int("keyLen", 32, "Key Length for CKK_GENERIC_SECRET (32,48,...)")
+	keyLen := flag.Int("keyLen", 32, "Key Length for CKK_GENERIC_SECRET (32,48,...)")
 	keyLabel := flag.String("keyLabel", "tmpkey", "Label of CKK_GENERIC_SECRET")
 
 	flag.Parse()
@@ -159,37 +158,36 @@ func main() {
 		}
 
 	case "SignHMAC384":
-	 pkcs11_attr := pkcs11.NewAttribute(pkcs11.CKA_LABEL, *keyLabel)
-	 p11w.ListObjects(
-		[]*pkcs11.Attribute{
-		pkcs11_attr,
-		},50,
-	 )
-	 o, _, err := p11w.FindObjects([]*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, *keyLabel),
-	 	},
-	   	1,
-	)
-	exitWhenError(err)
-	testMsg := []byte("someRandomString")
-	hmac, err := p11w.SignHmacSha384(o[0], testMsg)
-	exitWhenError(err)
-		fmt.Printf("successfully tested CKM_SHA384_HMAC on key with LABEL: %s\n HMAC %x\n", *keyLabel,hmac)
-
+		pkcs11_attr := pkcs11.NewAttribute(pkcs11.CKA_LABEL, *keyLabel)
+		p11w.ListObjects(
+			[]*pkcs11.Attribute{
+				pkcs11_attr,
+			}, 50,
+		)
+		o, _, err := p11w.FindObjects([]*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_LABEL, *keyLabel),
+		},
+			1,
+		)
+		exitWhenError(err)
+		testMsg := []byte("someRandomString")
+		hmac, err := p11w.SignHmacSha384(o[0], testMsg)
+		exitWhenError(err)
+		fmt.Printf("successfully tested CKM_SHA384_HMAC on key with LABEL: %s\n HMAC %x\n", *keyLabel, hmac)
 
 	case "generateSecret":
 		if *keyType == "GENERIC_SECRET" {
 			//Generate Key
-		        symKey, err := p11w.CreateSymKey(*keyLabel, *keyLen, *keyType)
+			symKey, err := p11w.CreateSymKey(*keyLabel, *keyLen, *keyType)
 			exitWhenError(err)
-                        testMsg := []byte("someRandomString")
+			testMsg := []byte("someRandomString")
 			hmac, err := p11w.SignHmacSha384(symKey, testMsg)
 			exitWhenError(err)
-                        fmt.Printf("Successfully tested CKM_SHA384_HMAC on key with label: %s \n HMAC %x\n", *keyLabel, hmac)
-		        p11w.ListObjects(
-			     []*pkcs11.Attribute{},
-			     50,
-		        )
+			fmt.Printf("Successfully tested CKM_SHA384_HMAC on key with label: %s \n HMAC %x\n", *keyLabel, hmac)
+			p11w.ListObjects(
+				[]*pkcs11.Attribute{},
+				50,
+			)
 
 		}
 
