@@ -19,7 +19,8 @@ const (
 /usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so,
 /usr/lib/s390x-linux-gnu/softhsm/libsofthsm2.so,
 /usr/lib/powerpc64le-linux-gnu/softhsm/libsofthsm2.so,
-/usr/local/Cellar/softhsm/2.1.0/lib/softhsm/libsofthsm2.so`
+/usr/local/Cellar/softhsm/2.1.0/lib/softhsm/libsofthsm2.so,
+/usr/local/lib/softhsm/libsofthsm2.so`
 )
 
 var (
