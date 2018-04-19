@@ -3,6 +3,7 @@ package pkcs11wrapper
 import (
 	"crypto/elliptic"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -252,6 +253,9 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 				ckaValueLen = []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, 0)}
 			}
 
+			// CKA_VALUE_LEN returns an 8 byte slice, lets convert that into a uint64 (8x8 bits)
+			keyLength, _ := binary.Uvarint(ckaValueLen[0].Value[0:8])
+
 			table.Append(
 				[]string{
 					fmt.Sprintf("%03d", i+1),
@@ -259,7 +263,7 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 					fmt.Sprintf("%s", al[0].Value),
 					fmt.Sprintf("%x", al[1].Value),
 					DecodeCKAKEY(al[3].Value[0]),
-					fmt.Sprintf("%d", ckaValueLen[0].Value),
+					fmt.Sprintf("%d", keyLength),
 				},
 			)
 		}
