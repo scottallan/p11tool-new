@@ -427,15 +427,27 @@ func (p11w *Pkcs11Wrapper) ImportRSAKey(rsa RsaKey) (err error) {
 
 }
 
-func (p11w *Pkcs11Wrapper) ImportECKeyFromFile(file string) (err error) {
+func (p11w *Pkcs11Wrapper) ImportECKeyFromFile(file string, keyStore string) (err error) {
 
 	// read in key from file
-	ec := EcdsaKey{}
+	//ec := EcdsaKey{}
+	var ec EcdsaKey
+
 	//err = ec.ImportPrivKeyFromFile(file)
-	err = ec.ImportPrivKeyFromP12(file, "securekey")
-	if err != nil {
-		return
-	}
+	switch keyStore {
+		case "p12":
+			ec = EcdsaKey{}
+			err = ec.ImportPrivKeyFromP12(file, "securekey")
+			if err != nil {
+			return err
+			}
+		default:
+			ec = EcdsaKey{}
+			err = ec.ImportPrivKeyFromFile(file)
+			if err != nil {
+				return err
+			}
+		}
 
 	// import key to hsm
 	err = p11w.ImportECKey(ec)
@@ -444,7 +456,7 @@ func (p11w *Pkcs11Wrapper) ImportECKeyFromFile(file string) (err error) {
 
 }
 
-func (p11w *Pkcs11Wrapper) ImportRSAKeyFromFile(file string) (err error) {
+func (p11w *Pkcs11Wrapper) ImportRSAKeyFromFile(file string, keyStore string) (err error) {
 
 	// read in key from file
 	rsa := RsaKey{}

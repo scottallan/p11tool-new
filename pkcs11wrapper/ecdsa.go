@@ -113,15 +113,19 @@ func (k *EcdsaKey) ImportPrivKeyFromP12(file string, password string) (err error
 	if err != nil {
 		return
 	}
-	fmt.Printf("pkcs8 privkey %c", keyPkcs8)
-	outFile, err := os.Create("out.pem")
-	if err != nil {
-		return
-	}
-	defer outFile.Close()
-	err = pem.Encode(outFile, &pem.Block{Type: "PRIVATE KEY", Bytes: keyPkcs8})
-	if err != nil {
-		return
+	
+	if CaseInsensitiveContains(os.Getenv("SECURITY_P11TOOL_DEBUG"), "TRUE") {
+
+		fmt.Printf("\npkcs8 privkey \n%c\n", pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyPkcs8}))
+		outFile, err := os.Create("out.pem")
+		if err != nil {
+			return err	
+		}
+		defer outFile.Close()
+		err = pem.Encode(outFile, &pem.Block{Type: "PRIVATE KEY", Bytes: keyPkcs8})
+		if err != nil {
+			return err
+		}
 	}
 	k.PrivKey = key.(*ecdsa.PrivateKey)
 	k.PubKey = &k.PrivKey.PublicKey
