@@ -14,6 +14,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/big"
+	"golang.org/x/crypto/pkcs12"
+	//"golang.org/x/crypto/pbkdf2"
+	"github.com/youmark/pkcs8"
+	"os"
 )
 
 type EcdsaKey struct {
@@ -93,6 +97,35 @@ func (k *EcdsaKey) ImportPubKeyFromCertFile(file string) (err error) {
 
 	k.PubKey = x509Cert.PublicKey.(*ecdsa.PublicKey)
 
+	return
+}
+
+func (k *EcdsaKey) ImportPrivKeyFromP12(file string, password string) (err error) {
+	keyFile, err := ioutil.ReadFile(file)
+	if err != nil {
+		return
+	}
+	key, _, err := pkcs12.Decode(keyFile, password)
+	if err != nil {
+		return
+	}
+	keyPkcs8, err := pkcs8.ConvertPrivateKeyToPKCS8(key)
+	if err != nil {
+		return
+	}
+	fmt.Printf("pkcs8 privkey %c", keyPkcs8)
+	outFile, err := os.Create("out.pem")
+	if err != nil {
+		return
+	}
+	defer outFile.Close()
+	err = pem.Encode(outFile, &pem.Block{Type: "PRIVATE KEY", Bytes: keyPkcs8})
+	if err != nil {
+		return
+	}
+	k.PrivKey = key.(*ecdsa.PrivateKey)
+	k.PubKey = &k.PrivKey.PublicKey
+	
 	return
 }
 

@@ -431,7 +431,8 @@ func (p11w *Pkcs11Wrapper) ImportECKeyFromFile(file string) (err error) {
 
 	// read in key from file
 	ec := EcdsaKey{}
-	err = ec.ImportPrivKeyFromFile(file)
+	//err = ec.ImportPrivKeyFromFile(file)
+	err = ec.ImportPrivKeyFromP12(file, "securekey")
 	if err != nil {
 		return
 	}
