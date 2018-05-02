@@ -457,8 +457,8 @@ func (p11w *Pkcs11Wrapper) ImportECKey(ec EcdsaKey) (err error) {
 
 		pkcs11.NewAttribute(pkcs11.CKA_ID, ec.SKI.Sha256Bytes),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, "TEST"),
-		pkcs11.NewAttribute(pkcs11.CKR_ATTRIBUTE_SENSITIVE, false),
-		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, true),
+		pkcs11.NewAttribute(pkcs11.CKR_ATTRIBUTE_SENSITIVE, true),
+		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
 		pkcs11.NewAttribute(pkcs11.CKA_VALUE, ec.PrivKey.D.Bytes()),
 
 		// implicitly enable derive for now
