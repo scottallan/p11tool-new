@@ -469,7 +469,7 @@ func (p11w *Pkcs11Wrapper) ImportECKey(ec EcdsaKey) (err error) {
 	if err != nil {
 		fmt.Printf("Object FAILED TO IMPORT with CKA_LABEL:%s CKA_ID:%x\n", "%s", ec.SKI.Sha256Bytes,ec.keyLabel)
 		return
-	} else {}
+	} else {
 		fmt.Printf("Object was imported with CKA_LABEL:%s CKA_ID:%x\n", "%s", ec.SKI.Sha256Bytes,ec.keyLabel)
 	}
 	return
