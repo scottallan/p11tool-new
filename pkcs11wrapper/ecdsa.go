@@ -118,7 +118,7 @@ func (k *EcdsaKey) ImportPrivKeyFromP12(file string, password string) (err error
 	if len(cert) != 0 {
 		k.Certificate = cert
 		for _, certificate := range cert {
-			fmt.Printf("\nCertificate[s] Exists in P12 with len of %d value first cert %s\n",len(cert), certificate.Subject)
+			fmt.Printf("\nCertificate[s] Exists in P12 with len of %d value first cert %s\n\n",len(cert), certificate.Subject)
 		}
 		
 	}
