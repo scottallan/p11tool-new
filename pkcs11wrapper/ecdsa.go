@@ -24,6 +24,7 @@ type EcdsaKey struct {
 	PubKey  *ecdsa.PublicKey
 	PrivKey *ecdsa.PrivateKey
 	SKI     SubjectKeyIdentifier
+	Certificate []*x509.Certificate
 }
 
 type SubjectKeyIdentifier struct {
@@ -105,13 +106,20 @@ func (k *EcdsaKey) ImportPrivKeyFromP12(file string, password string) (err error
 	if err != nil {
 		return
 	}
-	key, _, err := pkcs12.Decode(keyFile, password)
+	key, cert, err := pkcs12.Decode(keyFile, password)
 	if err != nil {
 		return
 	}
 	keyPkcs8, err := pkcs8.ConvertPrivateKeyToPKCS8(key)
 	if err != nil {
 		return
+	}
+	if len(cert) != 0 {
+		k.Certificate = cert
+		for _, certificate := range cert {
+			fmt.Printf("\nCertificate[s] Exists in P12 with len of %d value first cert %s\n",len(cert), certificate.Subject)
+		}
+		
 	}
 	
 	if CaseInsensitiveContains(os.Getenv("SECURITY_P11TOOL_DEBUG"), "TRUE") {

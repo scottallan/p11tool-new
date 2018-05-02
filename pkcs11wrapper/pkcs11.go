@@ -59,6 +59,7 @@ func init() {
 		pkcs11.CKK_SHA256_HMAC:    "CKK_SHA256_HMAC",
 		pkcs11.CKK_SHA384_HMAC:    "CKK_SHA384_HMAC",
 		pkcs11.CKK_SHA512_HMAC:    "CKK_SHA512_HMAC",
+		255:						   "CERTIFICATE",
 	}
 
 	// set up values for CKA_CLASS
@@ -220,7 +221,7 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 
 		// populate table data
 		for i, k := range objects {
-			var ckaValueLen []*pkcs11.Attribute
+			var ckaValueLen, ckaKeyType []*pkcs11.Attribute
 			al, err := p11w.Context.GetAttributeValue(
 				p11w.Session,
 				k,
@@ -228,7 +229,7 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 					pkcs11.NewAttribute(pkcs11.CKA_LABEL, nil),
 					pkcs11.NewAttribute(pkcs11.CKA_ID, nil),
 					pkcs11.NewAttribute(pkcs11.CKA_CLASS, nil),
-					pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, nil),
+					//pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, nil),
 					//	pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, nil),
 				},
 			)
@@ -253,6 +254,22 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 				ckaValueLen = []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, 0)}
 			}
 
+			if DecodeCKACLASS(al[2].Value[0]) == "CKO_CERTIFICATE" {
+				ckaKeyType = []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, 255)}
+			} else {
+				ckaKeyType, err = p11w.Context.GetAttributeValue(
+					p11w.Session,
+					k,
+					[]*pkcs11.Attribute{
+						pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, nil),
+					},
+				)
+
+				if err != nil {
+					panic(err)
+				}
+			}
+
 			// CKA_VALUE_LEN returns an 8 byte slice, lets convert that into a uint64 (8x8 bits)
 			keyLength, _ := binary.Uvarint(ckaValueLen[0].Value[0:8])
 
@@ -262,7 +279,7 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 					DecodeCKACLASS(al[2].Value[0]),
 					fmt.Sprintf("%s", al[0].Value),
 					fmt.Sprintf("%x", al[1].Value),
-					DecodeCKAKEY(al[3].Value[0]),
+					DecodeCKAKEY(ckaKeyType[0].Value[0]),
 					fmt.Sprintf("%d", keyLength),
 				},
 			)
@@ -294,6 +311,34 @@ func DecodeCKACLASS(b byte) string {
 	} else {
 		return "UNKNOWN"
 	}
+
+}
+
+func (p11w *Pkcs11Wrapper) ImportCertificate(ec EcdsaKey) (err error) {
+	
+	if ec.Certificate == nil {
+		err = errors.New("no cert to import")
+		return
+	}
+	for _, cert := range ec.Certificate {
+		
+		keyTemplate := []*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_CERTIFICATE),
+			pkcs11.NewAttribute(pkcs11.CKA_CERTIFICATE_TYPE, pkcs11.CKC_X_509),
+			pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
+			pkcs11.NewAttribute(pkcs11.CKA_SUBJECT, "test"),
+			pkcs11.NewAttribute(pkcs11.CKA_VALUE, cert.RawTBSCertificate),
+			pkcs11.NewAttribute(pkcs11.CKA_ID, cert.SubjectKeyId),
+			pkcs11.NewAttribute(pkcs11.CKA_LABEL, cert.Subject.CommonName),
+		}
+
+		_, err = p11w.Context.CreateObject(p11w.Session, keyTemplate)
+		if err == nil {
+			fmt.Printf("Object was imported with CKA_LABEL:%s\n", cert.Subject)
+		}
+	
+	}
+	return
 
 }
 
@@ -451,6 +496,9 @@ func (p11w *Pkcs11Wrapper) ImportECKeyFromFile(file string, keyStore string) (er
 
 	// import key to hsm
 	err = p11w.ImportECKey(ec)
+	if len(ec.Certificate) != 0 {
+		err = p11w.ImportCertificate(ec)
+	}
 
 	return
 
