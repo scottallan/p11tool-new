@@ -239,12 +239,12 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 
 		// prepare table headers
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"COUNT", "CKA_CLASS", "CKA_LABEL", "CKA_ID", "CKA_KEY_TYPE", "CKA_KEY_LEN"})
+		table.SetHeader([]string{"COUNT", "CKA_CLASS", "CKA_LABEL", "CKA_ID", "CKA_KEY_TYPE", "CKA_KEY_LEN", "CKA_SUBJECT", "CKA_ISSUER"})
 		table.SetCaption(true, fmt.Sprintf("Total objects found (max %d): %d", max, len(objects)))
 
 		// populate table data
 		for i, k := range objects {
-			var ckaValueLen, ckaKeyType []*pkcs11.Attribute
+			var ckaValueLen, ckaKeyType, ckaSubject, ckaIssuer []*pkcs11.Attribute
 			al, err := p11w.Context.GetAttributeValue(
 				p11w.Session,
 				k,
@@ -279,6 +279,25 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 
 			if DecodeCKACLASS(al[2].Value[0]) == "CKO_CERTIFICATE" {
 				ckaKeyType = []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, 255)}
+				ckaSubject, err = p11w.Context.GetAttributeValue(
+					p11w.Session,
+					k,
+					[]*pkcs11.Attribute{
+						pkcs11.NewAttribute(pkcs11.CKA_SUBJECT, nil),
+					},
+				)
+
+				if err != nil {
+					panic(err)
+				}
+				ckaIssuer, err = p11w.Context.GetAttributeValue(
+					p11w.Session,
+					k,
+					[]*pkcs11.Attribute{
+						pkcs11.NewAttribute(pkcs11.CKA_ISSUER, nil),
+					},
+				)
+
 			} else {
 				ckaKeyType, err = p11w.Context.GetAttributeValue(
 					p11w.Session,
@@ -291,6 +310,8 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 				if err != nil {
 					panic(err)
 				}
+				ckaSubject = []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_SUBJECT, "NOT APPLICABLE FOR NON CKO_CERTIFICATE")}
+				ckaIssuer = []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_ISSUER, "NOT APPLICABLE FOR NON CKO_CERTIFICATE")}
 			}
 
 			// CKA_VALUE_LEN returns an 8 byte slice, lets convert that into a uint64 (8x8 bits)
@@ -304,6 +325,8 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 					fmt.Sprintf("%x", al[1].Value),
 					DecodeCKAKEY(ckaKeyType[0].Value[0]),
 					fmt.Sprintf("%d", keyLength),
+					fmt.Sprintf("%c", ckaSubject[0].Value),
+					fmt.Sprintf("%c", ckaIssuer[0].Value),
 				},
 			)
 		}
@@ -343,15 +366,18 @@ func (p11w *Pkcs11Wrapper) ImportCertificate(ec EcdsaKey) (err error) {
 		err = errors.New("no cert to import")
 		return
 	}
+	ec.GenSKI()
+	//TODO calculate from key in cert
 	for _, cert := range ec.Certificate {
 		
 		keyTemplate := []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_CERTIFICATE),
 			pkcs11.NewAttribute(pkcs11.CKA_CERTIFICATE_TYPE, pkcs11.CKC_X_509),
 			pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
-			pkcs11.NewAttribute(pkcs11.CKA_SUBJECT, "test"),
+			pkcs11.NewAttribute(pkcs11.CKA_SUBJECT, cert.Subject.String()),
+			pkcs11.NewAttribute(pkcs11.CKA_ISSUER, cert.Issuer.String()),
 			pkcs11.NewAttribute(pkcs11.CKA_VALUE, cert.RawTBSCertificate),
-			pkcs11.NewAttribute(pkcs11.CKA_ID, cert.SubjectKeyId),
+			pkcs11.NewAttribute(pkcs11.CKA_ID, ec.SKI.Sha256Bytes),
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, cert.Subject.CommonName),
 		}
 
