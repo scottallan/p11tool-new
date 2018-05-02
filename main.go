@@ -143,7 +143,7 @@ func main() {
 			err = p11w.ImportRSAKeyFromFile(*keyFile, *keyStore)
 			exitWhenError(err)
 		} else {
-			err = p11w.ImportECKeyFromFile(*keyFile, *keyStore, *keyStorepass)
+			err = p11w.ImportECKeyFromFile(*keyFile, *keyStore, *keyStorepass, *keyLabel)
 			exitWhenError(err)
 		}
 

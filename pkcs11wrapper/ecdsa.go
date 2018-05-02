@@ -26,6 +26,8 @@ type EcdsaKey struct {
 	PrivKey *ecdsa.PrivateKey
 	SKI     SubjectKeyIdentifier
 	Certificate []*x509.Certificate
+	//optional
+	keyLabel string
 }
 
 type SubjectKeyIdentifier struct {

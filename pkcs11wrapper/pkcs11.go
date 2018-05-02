@@ -435,7 +435,7 @@ func (p11w *Pkcs11Wrapper) ImportECKey(ec EcdsaKey) (err error) {
 		pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, marshaledOID),
 
 		pkcs11.NewAttribute(pkcs11.CKA_ID, ec.SKI.Sha256Bytes),
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, "BCPUB1"),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, ec.keyLabel),
 		pkcs11.NewAttribute(pkcs11.CKA_EC_POINT, ecPt),
 	}
 
@@ -455,7 +455,7 @@ func (p11w *Pkcs11Wrapper) ImportECKey(ec EcdsaKey) (err error) {
 		pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, marshaledOID),
 
 		pkcs11.NewAttribute(pkcs11.CKA_ID, ec.SKI.Sha256Bytes),
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, "BCPRV1"),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, ec.keyLabel),
 		pkcs11.NewAttribute(pkcs11.CKR_ATTRIBUTE_SENSITIVE, false),
 		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, true),
 		pkcs11.NewAttribute(pkcs11.CKA_VALUE, ec.PrivKey.D.Bytes()),
@@ -537,22 +537,25 @@ func (p11w *Pkcs11Wrapper) ImportRSAKey(rsa RsaKey) (err error) {
 
 }
 
-func (p11w *Pkcs11Wrapper) ImportECKeyFromFile(file string, keyStore string, keyStorepass string) (err error) {
+func (p11w *Pkcs11Wrapper) ImportECKeyFromFile(file string, keyStore string, keyStorepass string, keyLabel string) (err error) {
 
 	// read in key from file
 	//ec := EcdsaKey{}
 	var ec EcdsaKey
+	
 
 	//err = ec.ImportPrivKeyFromFile(file)
 	switch keyStore {
 		case "p12":
 			ec = EcdsaKey{}
+			ec.keyLabel = keyLabel
 			err = ec.ImportPrivKeyFromP12(file, keyStorepass)
 			if err != nil {
 			return err
 			}
 		default:
 			ec = EcdsaKey{}
+			ec.keyLabel = keyLabel
 			err = ec.ImportPrivKeyFromFile(file)
 			if err != nil {
 				return err
