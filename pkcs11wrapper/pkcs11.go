@@ -441,9 +441,10 @@ func (p11w *Pkcs11Wrapper) ImportECKey(ec EcdsaKey) (err error) {
 
 	_, err = p11w.Context.CreateObject(p11w.Session, keyTemplate)
 	if err != nil {
+		fmt.Printf("Object FAILED TO IMPORT with CKA_LABEL:%s CKA_ID:%x\n", "%s", ec.SKI.Sha256Bytes,ec.keyLabel)
 		return
 	} else {
-		fmt.Printf("Object was imported with CKA_LABEL:%s CKA_ID:%x\n", "BCPUB1", ec.SKI.Sha256Bytes)
+		fmt.Printf("Object was imported with CKA_LABEL:%s CKA_ID:%x\n", "%s", ec.SKI.Sha256Bytes, ec.keyLabel)
 	}
 
 	keyTemplate = []*pkcs11.Attribute{
@@ -465,8 +466,11 @@ func (p11w *Pkcs11Wrapper) ImportECKey(ec EcdsaKey) (err error) {
 	}
 
 	_, err = p11w.Context.CreateObject(p11w.Session, keyTemplate)
-	if err == nil {
-		fmt.Printf("Object was imported with CKA_LABEL:%s CKA_ID:%x\n", "BCPRV1", ec.SKI.Sha256Bytes)
+	if err != nil {
+		fmt.Printf("Object FAILED TO IMPORT with CKA_LABEL:%s CKA_ID:%x\n", "%s", ec.SKI.Sha256Bytes,ec.keyLabel)
+		return
+	} else {}
+		fmt.Printf("Object was imported with CKA_LABEL:%s CKA_ID:%x\n", "%s", ec.SKI.Sha256Bytes,ec.keyLabel)
 	}
 	return
 
