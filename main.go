@@ -72,6 +72,7 @@ func main() {
 	keyLen := flag.Int("keyLen", 32, "Key Length for CKK_GENERIC_SECRET (32,48,...)")
 	keyLabel := flag.String("keyLabel", "tmpkey", "Label of CKK_GENERIC_SECRET")
 	keyStore := flag.String("keyStore", "file", "Keystore Type (file,pkcs12)")
+	keyStorepass := flag.String("keyStorepass", "securekey", "Keystore Storepass")
 
 	flag.Parse()
 
@@ -142,7 +143,7 @@ func main() {
 			err = p11w.ImportRSAKeyFromFile(*keyFile, *keyStore)
 			exitWhenError(err)
 		} else {
-			err = p11w.ImportECKeyFromFile(*keyFile, *keyStore)
+			err = p11w.ImportECKeyFromFile(*keyFile, *keyStore, *keyStorepass)
 			exitWhenError(err)
 		}
 

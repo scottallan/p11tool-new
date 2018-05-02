@@ -366,17 +366,19 @@ func (p11w *Pkcs11Wrapper) ImportCertificate(ec EcdsaKey) (err error) {
 		err = errors.New("no cert to import")
 		return
 	}
-	ec.GenSKI()
+	 
 	//TODO calculate from key in cert
-	for _, cert := range ec.Certificate {
-		
+	for i, cert := range ec.Certificate {
+		ec.SKI.Sha256Bytes = cert.SubjectKeyId
+		if i == 0 {ec.GenSKI()}
 		keyTemplate := []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_CERTIFICATE),
 			pkcs11.NewAttribute(pkcs11.CKA_CERTIFICATE_TYPE, pkcs11.CKC_X_509),
 			pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
-			pkcs11.NewAttribute(pkcs11.CKA_SUBJECT, cert.Subject.String()),
-			pkcs11.NewAttribute(pkcs11.CKA_ISSUER, cert.Issuer.String()),
-			pkcs11.NewAttribute(pkcs11.CKA_VALUE, cert.RawTBSCertificate),
+			pkcs11.NewAttribute(pkcs11.CKA_SUBJECT, cert.RawSubject),
+			pkcs11.NewAttribute(pkcs11.CKA_ISSUER, cert.RawIssuer),
+			//pkcs11.NewAttribute(pkcs11.CKA_VALUE, cert.RawTBSCertificate),
+			pkcs11.NewAttribute(pkcs11.CKA_VALUE, cert.Raw),
 			pkcs11.NewAttribute(pkcs11.CKA_ID, ec.SKI.Sha256Bytes),
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, cert.Subject.CommonName),
 		}
@@ -521,7 +523,7 @@ func (p11w *Pkcs11Wrapper) ImportRSAKey(rsa RsaKey) (err error) {
 
 }
 
-func (p11w *Pkcs11Wrapper) ImportECKeyFromFile(file string, keyStore string) (err error) {
+func (p11w *Pkcs11Wrapper) ImportECKeyFromFile(file string, keyStore string, keyStorepass string) (err error) {
 
 	// read in key from file
 	//ec := EcdsaKey{}
@@ -531,7 +533,7 @@ func (p11w *Pkcs11Wrapper) ImportECKeyFromFile(file string, keyStore string) (er
 	switch keyStore {
 		case "p12":
 			ec = EcdsaKey{}
-			err = ec.ImportPrivKeyFromP12(file, "securekey")
+			err = ec.ImportPrivKeyFromP12(file, keyStorepass)
 			if err != nil {
 			return err
 			}
