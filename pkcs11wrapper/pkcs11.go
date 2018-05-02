@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/miekg/pkcs11"
 	"github.com/olekukonko/tablewriter"
 )
@@ -42,7 +43,29 @@ type Pkcs11Object struct {
 	CKA_CLASS string
 	CKA_LABEL string
 	CKA_ID    string
+
 }
+
+// A BasicP11Request contains the algorithm and key size for a new CSR Generation.
+type BasicP11Request struct {
+	A string `json:"algo" yaml:"algo"`
+	S int    `json:"size" yaml:"size"`
+}
+
+type Key interface {
+
+	// SKI returns the subject key identifier of this key.
+	GenSKI()
+	/*
+	Fix Function to be Generic
+	Generate()
+	*/ 
+}
+
+const (
+	privateKeyFlag = true
+	publicKeyFlag  = false
+)
 
 // maps used to convert object into human readable text
 var CKA_KEY_TYPE_MAP map[byte]string
@@ -519,6 +542,136 @@ func (p11w *Pkcs11Wrapper) ImportRSAKeyFromFile(file string, keyStore string) (e
 	return
 
 }
+
+func (p11w *Pkcs11Wrapper) findKeyPairFromSKI(ski []byte, keyType bool) (*pkcs11.ObjectHandle, error) {
+	ktype := pkcs11.CKO_PUBLIC_KEY
+	if keyType == privateKeyFlag {
+		ktype = pkcs11.CKO_PRIVATE_KEY
+	}
+
+	template := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, ktype),
+		pkcs11.NewAttribute(pkcs11.CKA_ID, ski),
+	}
+	if err := p11w.Context.FindObjectsInit(p11w.Session, template); err != nil {
+		return nil, err
+	}
+
+	// single session instance, assume one hit only
+	objs, _, err := p11w.Context.FindObjects(p11w.Session, 1)
+	if err != nil {
+		return nil, err
+	}
+	if err = p11w.Context.FindObjectsFinal(p11w.Session); err != nil {
+		return nil, err
+	}
+
+	if len(objs) == 0 {
+		return nil, fmt.Errorf("Key not found [%s]", hex.Dump(ski))
+	}
+
+	return &objs[0], nil
+}
+
+func (p11w *Pkcs11Wrapper) signP11ECDSA(ski SubjectKeyIdentifier, msg []byte) (R, S *big.Int, err error) {
+
+	privateKey, err := p11w.findKeyPairFromSKI(ski.Sha256Bytes, privateKeyFlag)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Private key not found [%s]\n", err)
+	}
+
+	err = p11w.Context.SignInit(p11w.Session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil)}, *privateKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Sign-initialize  failed [%s]\n", err)
+	}
+
+	var sig []byte
+
+	sig, err = p11w.Context.Sign(p11w.Session, msg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("P11: sign failed [%s]\n", err)
+	}
+
+	R = new(big.Int)
+	S = new(big.Int)
+	R.SetBytes(sig[0 : len(sig)/2])
+	S.SetBytes(sig[len(sig)/2:])
+
+	return R, S, nil
+}
+
+func (p11w *Pkcs11Wrapper) signECDSA(k EcdsaKey, digest []byte) (signature []byte, err error) {
+	r, s, err := p11w.signP11ECDSA(k.SKI, digest)
+	if err != nil {
+		return nil, err
+	}
+
+	s, _, err = utils.ToLowS(k.PubKey, s)
+	if err != nil {
+		return nil, err
+	}
+
+	return utils.MarshalECDSASignature(r, s)
+}
+
+func (p11w *Pkcs11Wrapper) Sign(k Key, digest []byte) (signature []byte, err error) {
+	// Validate arguments
+	if k == nil {
+		return nil, errors.New("Invalid Key. It must not be nil.")
+	}
+	if len(digest) == 0 {
+		return nil, errors.New("Invalid digest. Cannot be empty.")
+	}
+
+	// Check key type
+	switch k.(type) {
+	case *EcdsaKey:
+		return p11w.signECDSA(*k.(*EcdsaKey), digest)
+	default:
+		return p11w.signECDSA(*k.(*EcdsaKey), digest)
+	}
+}
+
+//TODO implement Public() for crypto.signer
+
+func (p11w *Pkcs11Wrapper) Public() {
+	return
+}
+
+/*TODO Implement CSR Request to call csr.Generate with EC Key from HSM with SKI implementing crypto.signer from Pkcs11Wrapper Struct
+	var req = &CertificateRequest{
+		Names: []Name{
+			{
+				C:  "US",
+				ST: "California",
+				L:  "San Francisco",
+				O:  "CloudFlare",
+				OU: "Systems Engineering",
+			},
+		},
+		CN:         "cloudflare.com",
+		Hosts:      []string{"cloudflare.com", "www.cloudflare.com", "192.168.0.1", "jdoe@example.com"},
+		KeyRequest: &BasicP11Request{"ecdsa", 256},
+	}
+
+
+func (p11r *BasicP11Request) Generate() (crypto.PrivateKey, error) {
+	//FAKE the Generate and return a handle to a previously created private key
+	return
+}
+
+func (p11r *BasicP11Request) SigAlgo() x509.SignatureAlgorithm {
+	return
+}
+func (p11r *BasicP11Request) Algo() string {
+	return p11r.A
+}
+
+// Size returns the requested key size.
+func (p11r *BasicP11Request) Size() int {
+	return p11r.S
+}
+*/
 
 func (p11w *Pkcs11Wrapper) SignMessage(message string, key pkcs11.ObjectHandle) (signature string, err error) {
 

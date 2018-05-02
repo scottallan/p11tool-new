@@ -18,6 +18,7 @@ type RsaKey struct {
 	PubKey  *rsa.PublicKey
 	PrivKey *rsa.PrivateKey
 	SKI     SubjectKeyIdentifier
+	Certificate []*x509.Certificate
 }
 
 // SKI returns the subject key identifier of this key.
