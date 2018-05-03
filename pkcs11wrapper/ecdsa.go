@@ -28,6 +28,10 @@ type EcdsaKey struct {
 	Certificate []*x509.Certificate
 	//optional
 	keyLabel string
+	NamedCurveAsString	string
+	curveOid	asn1.RawValue
+	ephemeral	bool
+	exportable	bool
 }
 
 type SubjectKeyIdentifier struct {
@@ -203,6 +207,23 @@ func GetECParamMarshaled(namedCurve string) (ecParamMarshaled []byte, err error)
 
 	ecParamMarshaled, err = asn1.Marshal(ecParamOID)
 	return
+}
+
+func (k *EcdsaKey) namedCurveFromOID(marshaledOID []byte) elliptic.Curve {
+	var oid asn1.RawValue
+	asn1.Unmarshal(marshaledOID, &oid)
+	/*switch {
+	case oid.Equal(asn1.ObjectIdentifier{1, 3, 132, 0, 33}):
+			return elliptic.P224()
+	case oid.Equal(asn1.ObjectIdentifier{1, 2, 840, 10045, 3, 1, 7}):
+			return elliptic.P256()
+	case oid.Equal(asn1.ObjectIdentifier{1, 3, 132, 0, 34}):
+			return elliptic.P384()
+	case oid.Equal(asn1.ObjectIdentifier{1, 3, 132, 0, 35}):
+			return elliptic.P521()
+	}*/
+	fmt.Printf("OID TAG %c \nOID VALUE %c", oid.Tag, oid.Bytes)
+	return elliptic.P256()
 }
 
 func (k *EcdsaKey) SignMessage(message string) (signature string, err error) {

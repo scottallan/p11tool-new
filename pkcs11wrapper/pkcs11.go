@@ -2,6 +2,7 @@ package pkcs11wrapper
 
 import (
 	"crypto/elliptic"
+	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
@@ -588,8 +589,141 @@ func (p11w *Pkcs11Wrapper) ImportRSAKeyFromFile(file string, keyStore string) (e
 	// import key to hsm
 	err = p11w.ImportRSAKey(rsa)
 
-	return
+	return 
 
+}
+
+func ecPoint(Context *pkcs11.Ctx, session pkcs11.SessionHandle, key pkcs11.ObjectHandle) (ecpt, oid []byte, err error) {
+	template := []*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_EC_POINT, nil),
+			pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, nil),
+	}
+
+	attr, err := Context.GetAttributeValue(session, key, template)
+	if err != nil {
+			return nil, nil, fmt.Errorf("PKCS11: get(EC point) [%s]\n", err)
+	}
+
+	for _, a := range attr {
+			if a.Type == pkcs11.CKA_EC_POINT {
+					fmt.Printf("EC point: attr type %d/0x%x, len %d\n%s\n", a.Type, a.Type, len(a.Value), hex.Dump(a.Value))
+
+					// workarounds, see above
+					if (0 == (len(a.Value) % 2)) &&
+							(byte(0x04) == a.Value[0]) &&
+							(byte(0x04) == a.Value[len(a.Value)-1]) {
+							fmt.Printf("Detected opencryptoki bug, trimming trailing 0x04")
+							ecpt = a.Value[0 : len(a.Value)-1] // Trim trailing 0x04
+					} else if byte(0x04) == a.Value[0] && byte(0x04) == a.Value[2] {
+							fmt.Printf("Detected SoftHSM bug, trimming leading 0x04 0xXX")
+							ecpt = a.Value[2:len(a.Value)]
+					} else {
+							ecpt = a.Value
+					}
+			} else if a.Type == pkcs11.CKA_EC_PARAMS {
+					fmt.Printf("EC point: attr type %d/0x%x, len %d\n%s\n", a.Type, a.Type, len(a.Value), hex.Dump(a.Value))
+
+					oid = a.Value
+			}
+	}
+	if oid == nil || ecpt == nil {
+			return nil, nil, fmt.Errorf("CKA_EC_POINT not found, perhaps not an EC Key?")
+	}
+
+	return ecpt, oid, nil
+}
+
+func (p11w *Pkcs11Wrapper) GenerateEC(ec EcdsaKey) (ski []byte, err error) {
+
+	publabel := fmt.Sprintf("BCPUB%s", "1")
+	prvlabel := fmt.Sprintf("BCPRV%s", "1")
+	//TODO pass curve into function
+	
+
+	marshaledOID, err := GetECParamMarshaled(ec.NamedCurveAsString) 
+	if err != nil {
+			return nil, fmt.Errorf("Could not marshal OID [%s]", err.Error())
+	}
+
+	pubkey_t := []*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
+			pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
+			pkcs11.NewAttribute(pkcs11.CKA_TOKEN, !ec.ephemeral),
+			pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
+			pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, marshaledOID),
+			pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
+
+			pkcs11.NewAttribute(pkcs11.CKA_ID, publabel),
+			pkcs11.NewAttribute(pkcs11.CKA_LABEL, publabel),
+	}
+
+	prvkey_t := []*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
+			pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
+			pkcs11.NewAttribute(pkcs11.CKA_TOKEN, !ec.ephemeral),
+			pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
+			pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
+
+			pkcs11.NewAttribute(pkcs11.CKA_ID, prvlabel),
+			pkcs11.NewAttribute(pkcs11.CKA_LABEL, prvlabel),
+
+			pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, ec.exportable),
+	}
+
+
+	pub, prv, err := p11w.Context.GenerateKeyPair(p11w.Session,
+		[]*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_EC_KEY_PAIR_GEN, nil)},
+		pubkey_t, prvkey_t)
+
+if err != nil {
+		return nil, fmt.Errorf("P11: keypair generate failed [%s]\n", err)
+}
+
+ecpt, _, _ := ecPoint(p11w.Context, p11w.Session, pub)
+hash := sha256.Sum256(ecpt)
+ski = hash[:]
+
+// set CKA_ID of the both keys to SKI(public key) and CKA_LABEL to hex string of SKI
+setski_t := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_ID, ski),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, hex.EncodeToString(ski)),
+}
+
+fmt.Printf("Generated new P11 key, SKI %x\n", ski)
+err = p11w.Context.SetAttributeValue(p11w.Session, pub, setski_t)
+if err != nil {
+		return nil, fmt.Errorf("P11: set-ID-to-SKI[public] failed [%s]\n", err)
+}
+
+err = p11w.Context.SetAttributeValue(p11w.Session, prv, setski_t)
+if err != nil {
+		return nil, fmt.Errorf("P11: set-ID-to-SKI[private] failed [%s]\n", err)
+}
+
+nistCurve := ec.namedCurveFromOID(marshaledOID)
+if nistCurve == nil {
+		return nil, fmt.Errorf("Cound not recognize Curve from OID")
+}
+x, y := elliptic.Unmarshal(nistCurve, ecpt)
+if x == nil {
+		return nil, fmt.Errorf("Failed Unmarshaling Public Key")
+}
+
+pubGoKey := &ecdsa.PublicKey{Curve: nistCurve, X: x, Y: y}
+fmt.Printf("pubGoKey %c\n", pubGoKey.X)
+//pubGoKey := &ec.PubKey{Curve: nistCurve, X: x, Y: y}
+/*if logger.IsEnabledFor(logging.DEBUG) {
+		listAttrs(p11lib, session, prv)
+		listAttrs(p11lib, session, pub)
+}*/		
+
+return ski, nil
+}
+
+
+func (p11w *Pkcs11Wrapper) GenerateRSA(rsa RsaKey) (err error) {
+
+	return
 }
 
 func (p11w *Pkcs11Wrapper) findKeyPairFromSKI(ski []byte, keyType bool) (*pkcs11.ObjectHandle, error) {
