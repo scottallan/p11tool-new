@@ -464,20 +464,41 @@ func DecodeCKACLASS(b byte) string {
 
 }
 
+var (
+	// ans1 p12 bags
+	// see https://tools.ietf.org/html/rfc7292#appendix-D
+	oidCertTypeX509Certificate = asn1.ObjectIdentifier([]int{1, 2, 840, 113549, 1, 9, 22, 1})
+	oidPKCS8ShroundedKeyBag    = asn1.ObjectIdentifier([]int{1, 2, 840, 113549, 1, 12, 10, 1, 2})
+	oidCertBag                 = asn1.ObjectIdentifier([]int{1, 2, 840, 113549, 1, 12, 10, 1, 3})
+)
+
 func GetCert(certFile string) (cert []*x509.Certificate) {
 
 	raw, err := ioutil.ReadFile(certFile)
 	if err != nil {
 		fmt.Println("err.Error() %s",certFile)
 	}
-	p, _ := pem.Decode(raw)
-
+	var trustedCerts []*x509.Certificate
+	p, rest := pem.Decode(raw)
+	for (len(rest)) > 0 {
+		block, r := pem.Decode(rest)
+		trustedCert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			panic("failed to parse certificate: " + err.Error())
+		}
+		trustedCerts = append(trustedCerts, trustedCert)
+		rest = r
+	}
+	fmt.Printf("length of chain: %d",len(trustedCerts))
 	fmt.Printf("\nCertificate \n%c\n", pem.EncodeToMemory(p))
 	c, err := x509.ParseCertificate(p.Bytes)
 	if err != nil {
 		panic("failed to parse certificate: " + err.Error())
 	}
 	cert = append(cert, c)
+	for _, trc := range trustedCerts {
+	cert = append(cert, trc)
+	}
 return 
 }
 
@@ -496,8 +517,12 @@ func (p11w *Pkcs11Wrapper) ImportCertificate(ec EcdsaKey) (err error) {
 			} else {
 				ec.SKI.Sha256Bytes = cert.SubjectKeyId
 			}
-		} //Otherwise take the SKI from already set struct
-		//if i == 0 {ec.GenSKI()}
+		} else if i != 0 {
+			    ec.SKI.Sha256Bytes = cert.SubjectKeyId
+				// SKI is set but need to use for first in chain only otherwise take from cert.SubjectKeyIdentifier 
+				//Otherwise take the SKI from already set struct
+				//if i == 0 {ec.GenSKI()}
+		}//SKI is SET and the Cert Count is 0 so use what was set
 		keyTemplate := []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_CERTIFICATE),
 			pkcs11.NewAttribute(pkcs11.CKA_CERTIFICATE_TYPE, pkcs11.CKC_X_509),
@@ -509,7 +534,7 @@ func (p11w *Pkcs11Wrapper) ImportCertificate(ec EcdsaKey) (err error) {
 			pkcs11.NewAttribute(pkcs11.CKA_ID, ec.SKI.Sha256Bytes),
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, cert.Subject.CommonName),
 		}
-
+		//TODO: Confirm Cert doesnt already exist before importing
 		_, err = p11w.Context.CreateObject(p11w.Session, keyTemplate)
 		if err == nil {
 			fmt.Printf("Object was imported with CKA_LABEL:%s\n", cert.Subject)
