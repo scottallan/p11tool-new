@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/big"
 	"net"
 	"net/mail"
@@ -463,6 +464,23 @@ func DecodeCKACLASS(b byte) string {
 
 }
 
+func GetCert(certFile string) (cert []*x509.Certificate) {
+
+	raw, err := ioutil.ReadFile(certFile)
+	if err != nil {
+		fmt.Println("err.Error() %s",certFile)
+	}
+	p, _ := pem.Decode(raw)
+
+	fmt.Printf("\nCertificate \n%c\n", pem.EncodeToMemory(p))
+	c, err := x509.ParseCertificate(p.Bytes)
+	if err != nil {
+		panic("failed to parse certificate: " + err.Error())
+	}
+	cert = append(cert, c)
+return 
+}
+
 func (p11w *Pkcs11Wrapper) ImportCertificate(ec EcdsaKey) (err error) {
 	
 	if ec.Certificate == nil {
@@ -472,8 +490,14 @@ func (p11w *Pkcs11Wrapper) ImportCertificate(ec EcdsaKey) (err error) {
 	 
 	//TODO calculate from key in cert
 	for i, cert := range ec.Certificate {
-		ec.SKI.Sha256Bytes = cert.SubjectKeyId
-		if i == 0 {ec.GenSKI()}
+		if ec.SKI.Sha256Bytes == nil { //True when Importing from a P12 as we have not calculated yet.  On direct import we use keyLabel to calc
+			if i == 0 {
+				ec.GenSKI()
+			} else {
+				ec.SKI.Sha256Bytes = cert.SubjectKeyId
+			}
+		} //Otherwise take the SKI from already set struct
+		//if i == 0 {ec.GenSKI()}
 		keyTemplate := []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_CERTIFICATE),
 			pkcs11.NewAttribute(pkcs11.CKA_CERTIFICATE_TYPE, pkcs11.CKC_X_509),

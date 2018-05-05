@@ -226,6 +226,7 @@ func (k *EcdsaKey) ImportPrivKeyFromP12(file string, password string) (err error
 		}
 		defer outFile.Close()
 		err = pem.Encode(outFile, &pem.Block{Type: "PRIVATE KEY", Bytes: keyPkcs8})
+	
 		if err != nil {
 			return err
 		}
