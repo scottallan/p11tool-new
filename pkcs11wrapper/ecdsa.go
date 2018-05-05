@@ -1,6 +1,7 @@
 package pkcs11wrapper
 
 import (
+	"encoding/json"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -15,9 +16,16 @@ import (
 	"io/ioutil"
 	"math/big"
 	//"golang.org/x/crypto/pkcs12"
+
+	//"github.com/cloudflare/cfssl/csr"
+
 	"github.com/scottallan/crypto/pkcs12"
 	//"golang.org/x/crypto/pbkdf2"
 	"github.com/youmark/pkcs8"
+
+	//"github.com/hyperledger/fabric/bccsp"
+	//"github.com/hyperledger/fabric/bccsp/utils"
+
 	"os"
 )
 
@@ -32,6 +40,8 @@ type EcdsaKey struct {
 	curveOid	asn1.RawValue
 	ephemeral	bool
 	exportable	bool
+
+	Req	*CSRInfo
 }
 
 type SubjectKeyIdentifier struct {
@@ -41,8 +51,73 @@ type SubjectKeyIdentifier struct {
 	Sha256Bytes []byte
 }
 
+/*func (csp *impl) signECDSA(k ecdsaPrivateKey, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
+	r, s, err := csp.signP11ECDSA(k.ski, digest)
+	if err != nil {
+		return nil, err
+	}
+
+	s, _, err = utils.ToLowS(k.pub.pub, s)
+	if err != nil {
+		return nil, err
+	}
+
+	return utils.MarshalECDSASignature(r, s)
+}
+
+func (csp *impl) verifyECDSA(k ecdsaPublicKey, signature, digest []byte, opts bccsp.SignerOpts) (valid bool, err error) {
+	r, s, err := utils.UnmarshalECDSASignature(signature)
+	if err != nil {
+		return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
+	}
+
+	lowS, err := utils.IsLowS(k.pub, s)
+	if err != nil {
+		return false, err
+	}
+
+	if !lowS {
+		return false, fmt.Errorf("Invalid S. Must be smaller than half the order [%s][%s].", s, utils.GetCurveHalfOrdersAt(k.pub.Curve))
+	}
+
+	if csp.softVerify {
+		return ecdsa.Verify(k.pub, digest, r, s), nil
+	} else {
+		return csp.verifyP11ECDSA(k.ski, digest, r, s, k.pub.Curve.Params().BitSize/8)
+	}
+}*/
+
 // SKI returns the subject key identifier of this key.
+
+
+
+func (k *EcdsaKey) GetCSRInfo(jsonFile string) CSRInfo {
+	raw, err := ioutil.ReadFile(jsonFile)
+	if err != nil {
+		fmt.Println("err.Error() %s",jsonFile)
+	}
+
+	var host CSRInfo
+	err = json.Unmarshal(raw, &host)
+	if err != nil {
+		fmt.Printf("error unmarshalling json %s\n",err)
+	}
+	return host
+
+
+}
+
+func ToJson(p interface{}) string {
+    bytes, err := json.Marshal(p)
+    if err != nil {
+        fmt.Println(err.Error())
+        os.Exit(1)
+    }
+    return string(bytes)
+}
+
 func (k *EcdsaKey) GenSKI() {
+
 	if k.PubKey == nil {
 		return
 	}
@@ -60,7 +135,20 @@ func (k *EcdsaKey) GenSKI() {
 	hash.Write(raw)
 	k.SKI.Sha1Bytes = hash.Sum(nil)
 	k.SKI.Sha1 = hex.EncodeToString(k.SKI.Sha1Bytes)
+	
 
+	return
+}
+
+func (k *EcdsaKey) PublicKey() (Key, error) {
+	return k, nil
+}
+
+func (k *EcdsaKey) Bytes() (raw []byte, err error) {
+	raw, err = x509.MarshalPKIXPublicKey(k.PubKey)
+	if err != nil {
+		return nil, fmt.Errorf("Failed marshalling key [%s]", err)
+	}
 	return
 }
 
