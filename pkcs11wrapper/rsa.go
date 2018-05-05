@@ -47,6 +47,7 @@ func (k *RsaKey) GenSKI() {
 	return
 }
 
+
 func (k *RsaKey) Generate(bits int) (err error) {
 
 	// generate private key

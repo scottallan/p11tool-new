@@ -1,15 +1,29 @@
 package pkcs11wrapper
 
 import (
+	"crypto"
 	"crypto/elliptic"
+	"crypto/ecdsa"
 	"crypto/sha256"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"crypto/rand"
+	"encoding/asn1"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
+	"net"
+	"net/mail"
 	"os"
 	"strings"
+
+	"github.com/cloudflare/cfssl/csr"
+	//"github.com/cloudflare/cfssl/log"
+	"github.com/cloudflare/cfssl/helpers"
 
 	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/miekg/pkcs11"
@@ -52,14 +66,89 @@ type BasicP11Request struct {
 	S int    `json:"size" yaml:"size"`
 }
 
+type BasicKeyRequest struct {
+	Algo string `json:"algo" yaml:"algo"`
+	Size int    `json:"size" yaml:"size"`
+}
+
 type Key interface {
 
 	// SKI returns the subject key identifier of this key.
 	GenSKI()
-	/*
-	Fix Function to be Generic
-	Generate()
-	*/ 
+
+	PublicKey() (Key, error)
+
+	Bytes() ([]byte, error)
+
+	//Fix Function to be Generic
+	//Generate()
+	 
+}
+
+type EnrollmentRequest struct {
+	// The identity name to enroll
+	Name string `json:"name" skip:"true"`
+	// The secret returned via Register
+	Secret string `json:"secret,omitempty" skip:"true" mask:"password"`
+	// Profile is the name of the signing profile to use in issuing the certificate
+	Profile string `json:"profile,omitempty" help:"Name of the signing profile to use in issuing the certificate"`
+	// Label is the label to use in HSM operations
+	Label string `json:"label,omitempty" help:"Label to use in HSM operations"`
+	// CSR is Certificate Signing Request info
+	CSR *CSRInfo `json:"csr,omitempty" help:"Certificate Signing Request info"`
+	// CAName is the name of the CA to connect to
+	CAName string `json:"caname,omitempty" skip:"true"`
+	// AttrReqs are requests for attributes to add to the certificate.
+	// Each attribute is added only if the requestor owns the attribute.
+	AttrReqs []*AttributeRequest `json:"attr_reqs,omitempty"`
+}
+
+type CertificateRequest struct {
+	CN           string
+	Names        []Name     `json:"names" yaml:"names"`
+	Hosts        []string   `json:"hosts" yaml:"hosts"`
+	KeyRequest   KeyRequest `json:"key,omitempty" yaml:"key,omitempty"`
+	CA           *CAConfig  `json:"ca,omitempty" yaml:"ca,omitempty"`
+	SerialNumber string     `json:"serialnumber,omitempty" yaml:"serialnumber,omitempty"`
+}
+
+type Name struct {
+	C            string 	`json:"c" yaml:"C"`// Country
+	ST           string 	`json:"st" yaml:"ST"`// State
+	L            string 	`json:"l" yaml:"ST"`// Locality
+	O            string 	`json:"o" yaml:"O"`// OrganisationName
+	OU           string 	`json:"ou" yaml:"OU"`// OrganisationalUnitName
+	SerialNumber string		`json:"serialnumber" yame:"serialnumber"`
+}
+
+// A KeyRequest is a generic request for a new key.
+type KeyRequest interface {
+	Algo() string
+	Size() int
+	Generate() (crypto.PrivateKey, error)
+	SigAlgo() x509.SignatureAlgorithm
+}
+
+// CAConfig is a section used in the requests initialising a new CA.
+type CAConfig struct {
+	PathLength  int    `json:"pathlen" yaml:"pathlen"`
+	PathLenZero bool   `json:"pathlenzero" yaml:"pathlenzero"`
+	Expiry      string `json:"expiry" yaml:"expiry"`
+	Backdate    string `json:"backdate" yaml:"backdate"`
+}
+
+type CSRInfo struct {
+	CN           string           `json:"CN"`
+	Names        []Name       `json:"names,omitempty"`
+	Hosts        []string         `json:"hosts,omitempty"`
+	KeyRequest   *BasicP11Request `json:"key,omitempty"`
+	CA           *CAConfig    `json:"ca,omitempty"`
+	SerialNumber string           `json:"serial_number,omitempty"`
+}
+
+type AttributeRequest struct {
+	Name     string `json:"name"`
+	Optional bool   `json:"optional,omitempty"`
 }
 
 const (
@@ -435,15 +524,16 @@ func (p11w *Pkcs11Wrapper) ImportECKey(ec EcdsaKey) (err error) {
 		pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, marshaledOID),
 
 		pkcs11.NewAttribute(pkcs11.CKA_ID, ec.SKI.Sha256Bytes),
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, "BCPUB1"),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, ec.keyLabel),
 		pkcs11.NewAttribute(pkcs11.CKA_EC_POINT, ecPt),
 	}
 
 	_, err = p11w.Context.CreateObject(p11w.Session, keyTemplate)
 	if err != nil {
+		fmt.Printf("Object FAILED TO IMPORT with CKA_LABEL:%s CKA_ID:%x\n ERROR %s", ec.keyLabel, ec.SKI.Sha256Bytes, err)
 		return
 	} else {
-		fmt.Printf("Object was imported with CKA_LABEL:%s CKA_ID:%x\n", "BCPUB1", ec.SKI.Sha256Bytes)
+		fmt.Printf("Object was imported with CKA_LABEL:%s CKA_ID:%x\n", ec.keyLabel, ec.SKI.Sha256Bytes)
 	}
 
 	keyTemplate = []*pkcs11.Attribute{
@@ -455,9 +545,9 @@ func (p11w *Pkcs11Wrapper) ImportECKey(ec EcdsaKey) (err error) {
 		pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, marshaledOID),
 
 		pkcs11.NewAttribute(pkcs11.CKA_ID, ec.SKI.Sha256Bytes),
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, "BCPRV1"),
-		pkcs11.NewAttribute(pkcs11.CKR_ATTRIBUTE_SENSITIVE, false),
-		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, true),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, ec.keyLabel),
+		pkcs11.NewAttribute(pkcs11.CKR_ATTRIBUTE_SENSITIVE, true),
+		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
 		pkcs11.NewAttribute(pkcs11.CKA_VALUE, ec.PrivKey.D.Bytes()),
 
 		// implicitly enable derive for now
@@ -465,8 +555,11 @@ func (p11w *Pkcs11Wrapper) ImportECKey(ec EcdsaKey) (err error) {
 	}
 
 	_, err = p11w.Context.CreateObject(p11w.Session, keyTemplate)
-	if err == nil {
-		fmt.Printf("Object was imported with CKA_LABEL:%s CKA_ID:%x\n", "BCPRV1", ec.SKI.Sha256Bytes)
+	if err != nil {
+		fmt.Printf("Object FAILED TO IMPORT with CKA_LABEL:%s CKA_ID:%x\n ERROR %s", ec.keyLabel, ec.SKI.Sha256Bytes, err)
+		return
+	} else {
+		fmt.Printf("Object was imported with CKA_LABEL:%s CKA_ID:%x\n", ec.keyLabel, ec.SKI.Sha256Bytes)
 	}
 	return
 
@@ -537,22 +630,25 @@ func (p11w *Pkcs11Wrapper) ImportRSAKey(rsa RsaKey) (err error) {
 
 }
 
-func (p11w *Pkcs11Wrapper) ImportECKeyFromFile(file string, keyStore string, keyStorepass string) (err error) {
+func (p11w *Pkcs11Wrapper) ImportECKeyFromFile(file string, keyStore string, keyStorepass string, keyLabel string) (err error) {
 
 	// read in key from file
 	//ec := EcdsaKey{}
 	var ec EcdsaKey
+	
 
 	//err = ec.ImportPrivKeyFromFile(file)
 	switch keyStore {
 		case "p12":
 			ec = EcdsaKey{}
+			ec.keyLabel = keyLabel
 			err = ec.ImportPrivKeyFromP12(file, keyStorepass)
 			if err != nil {
 			return err
 			}
 		default:
 			ec = EcdsaKey{}
+			ec.keyLabel = keyLabel
 			err = ec.ImportPrivKeyFromFile(file)
 			if err != nil {
 				return err
@@ -581,8 +677,145 @@ func (p11w *Pkcs11Wrapper) ImportRSAKeyFromFile(file string, keyStore string) (e
 	// import key to hsm
 	err = p11w.ImportRSAKey(rsa)
 
-	return
+	return 
 
+}
+
+func ecPoint(Context *pkcs11.Ctx, session pkcs11.SessionHandle, key pkcs11.ObjectHandle) (ecpt, oid []byte, err error) {
+	template := []*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_EC_POINT, nil),
+			pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, nil),
+	}
+
+	attr, err := Context.GetAttributeValue(session, key, template)
+	if err != nil {
+			return nil, nil, fmt.Errorf("PKCS11: get(EC point) [%s]\n", err)
+	}
+
+	for _, a := range attr {
+			if a.Type == pkcs11.CKA_EC_POINT {
+					fmt.Printf("EC point: attr type %d/0x%x, len %d\n%s\n", a.Type, a.Type, len(a.Value), hex.Dump(a.Value))
+
+					// workarounds, see above
+					if (0 == (len(a.Value) % 2)) &&
+							(byte(0x04) == a.Value[0]) &&
+							(byte(0x04) == a.Value[len(a.Value)-1]) {
+							fmt.Printf("Detected opencryptoki bug, trimming trailing 0x04")
+							ecpt = a.Value[0 : len(a.Value)-1] // Trim trailing 0x04
+					} else if byte(0x04) == a.Value[0] && byte(0x04) == a.Value[2] {
+							fmt.Printf("Detected SoftHSM bug, trimming leading 0x04 0xXX")
+							ecpt = a.Value[2:len(a.Value)]
+					} else {
+							ecpt = a.Value
+					}
+			} else if a.Type == pkcs11.CKA_EC_PARAMS {
+					fmt.Printf("EC point: attr type %d/0x%x, len %d\n%s\n", a.Type, a.Type, len(a.Value), hex.Dump(a.Value))
+
+					oid = a.Value
+			}
+	}
+	if oid == nil || ecpt == nil {
+			return nil, nil, fmt.Errorf("CKA_EC_POINT not found, perhaps not an EC Key?")
+	}
+
+	return ecpt, oid, nil
+}
+
+func (p11w *Pkcs11Wrapper) GenerateEC(ec EcdsaKey) (ski []byte, err error) {
+
+	publabel := fmt.Sprintf("BCPUB%s", "1")
+	prvlabel := fmt.Sprintf("BCPRV%s", "1")
+	//TODO pass curve into function
+
+	ec.exportable = true
+	ec.ephemeral = false
+	
+
+	marshaledOID, err := GetECParamMarshaled(ec.NamedCurveAsString) 
+	if err != nil {
+			return nil, fmt.Errorf("Could not marshal OID [%s]", err.Error())
+	}
+
+	pubkey_t := []*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
+			pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
+			pkcs11.NewAttribute(pkcs11.CKA_TOKEN, !ec.ephemeral),
+			pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
+			pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, marshaledOID),
+			pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
+
+			pkcs11.NewAttribute(pkcs11.CKA_ID, publabel),
+			pkcs11.NewAttribute(pkcs11.CKA_LABEL, publabel),
+	}
+
+	prvkey_t := []*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
+			pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
+			pkcs11.NewAttribute(pkcs11.CKA_TOKEN, !ec.ephemeral),
+			pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
+			pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
+
+			pkcs11.NewAttribute(pkcs11.CKA_ID, prvlabel),
+			pkcs11.NewAttribute(pkcs11.CKA_LABEL, prvlabel),
+
+			pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, ec.exportable),
+	}
+
+
+	pub, prv, err := p11w.Context.GenerateKeyPair(p11w.Session,
+		[]*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_EC_KEY_PAIR_GEN, nil)},
+		pubkey_t, prvkey_t)
+
+if err != nil {
+		return nil, fmt.Errorf("P11: keypair generate failed [%s]\n", err)
+}
+fmt.Printf("\npub key raw %c\n", pub)
+
+ecpt, _, _ := ecPoint(p11w.Context, p11w.Session, pub)
+hash := sha256.Sum256(ecpt)
+ski = hash[:]
+
+// set CKA_ID of the both keys to SKI(public key) and CKA_LABEL to hex string of SKI
+setski_t := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_ID, ski),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, hex.EncodeToString(ski)),
+}
+
+fmt.Printf("Generated new P11 key, SKI %x\n", ski)
+err = p11w.Context.SetAttributeValue(p11w.Session, pub, setski_t)
+if err != nil {
+		return nil, fmt.Errorf("P11: set-ID-to-SKI[public] failed [%s]\n", err)
+}
+
+err = p11w.Context.SetAttributeValue(p11w.Session, prv, setski_t)
+if err != nil {
+		return nil, fmt.Errorf("P11: set-ID-to-SKI[private] failed [%s]\n", err)
+}
+
+nistCurve := ec.namedCurveFromOID(marshaledOID)
+if nistCurve == nil {
+		return nil, fmt.Errorf("Cound not recognize Curve from OID")
+}
+x, y := elliptic.Unmarshal(nistCurve, ecpt)
+if x == nil {
+		return nil, fmt.Errorf("Failed Unmarshaling Public Key")
+}
+
+pubGoKey := &ecdsa.PublicKey{Curve: nistCurve, X: x, Y: y}
+fmt.Printf("pubGoKey %c\n", pubGoKey.X)
+//pubGoKey := &ec.PubKey{Curve: nistCurve, X: x, Y: y}
+/*if logger.IsEnabledFor(logging.DEBUG) {
+		listAttrs(p11lib, session, prv)
+		listAttrs(p11lib, session, pub)
+}*/		
+
+return ski, nil
+}
+
+
+func (p11w *Pkcs11Wrapper) GenerateRSA(rsa RsaKey) (err error) {
+
+	return
 }
 
 func (p11w *Pkcs11Wrapper) findKeyPairFromSKI(ski []byte, keyType bool) (*pkcs11.ObjectHandle, error) {
@@ -673,6 +906,309 @@ func (p11w *Pkcs11Wrapper) Sign(k Key, digest []byte) (signature []byte, err err
 		return p11w.signECDSA(*k.(*EcdsaKey), digest)
 	}
 }
+const curveP256 int = 256
+// NewBasicKeyRequest returns a default BasicKeyRequest.
+func NewBasicKeyRequest() *BasicP11Request {
+
+	return &BasicP11Request{"ecdsa", curveP256}
+}
+func (p11w *Pkcs11Wrapper) GenCSR(ec EcdsaKey) ([]byte, Key, error) {
+if ec.Req.Names[0].C == "" {
+ec.Req = &CSRInfo{
+		Names: []Name{
+			{	C:  "US",
+				ST: "California",
+				L:  "San Francisco",
+				O:  "CloudFlare",
+				OU: "Systems Engineering",
+		},
+		},
+		Hosts:      []string{"cloudflare.com"},
+		KeyRequest: NewBasicKeyRequest(),
+	}
+}
+
+	cr := p11w.newCertificateRequest(ec.Req)
+	cr.CN = ec.Req.CN
+
+	if cr.KeyRequest == nil {
+		cr.KeyRequest = newCfsslBasicKeyRequest(NewBasicKeyRequest())
+	}
+
+	key, cspSigner, err := p11w.BCCSPKeyRequestGenerate(cr, ec)
+	//_, cspSigner, err := p11w.BCCSPKeyRequestGenerate(cr, ec)
+	if err != nil {
+		fmt.Printf("failed generating BCCSP key: %s", err)
+		return nil, nil, err
+	}
+	
+	csrPEM, err := GenerateCSR(cspSigner, cr)
+	if err != nil {
+		fmt.Printf("failed generating CSR: %s", err)
+		return nil, nil, err
+	}
+	return csrPEM, key, nil
+	
+
+}
+
+// appendIf appends to a if s is not an empty string.
+func appendIf(s string, a *[]string) {
+	if s != "" {
+		*a = append(*a, s)
+	}
+}
+
+// BasicConstraints CSR information RFC 5280, 4.2.1.9
+type BasicConstraints struct {
+	IsCA       bool `asn1:"optional"`
+	MaxPathLen int  `asn1:"optional,default:-1"`
+}
+
+// appendCAInfoToCSR appends CAConfig BasicConstraint extension to a CSR
+func appendCAInfoToCSR(reqConf *CAConfig, csr *x509.CertificateRequest) error {
+	pathlen := reqConf.PathLength
+	if pathlen == 0 && !reqConf.PathLenZero {
+		pathlen = -1
+	}
+	val, err := asn1.Marshal(BasicConstraints{true, pathlen})
+
+	if err != nil {
+		return err
+	}
+
+	csr.ExtraExtensions = []pkix.Extension{
+		{
+			Id:       asn1.ObjectIdentifier{2, 5, 29, 19},
+			Value:    val,
+			Critical: true,
+		},
+	}
+
+	return nil
+}
+
+func (cr *CertificateRequest) Name() pkix.Name {
+	var name pkix.Name
+	name.CommonName = cr.CN
+
+	for _, n := range cr.Names {
+		appendIf(n.C, &name.Country)
+		appendIf(n.ST, &name.Province)
+		appendIf(n.L, &name.Locality)
+		appendIf(n.O, &name.Organization)
+		appendIf(n.OU, &name.OrganizationalUnit)
+	}
+	name.SerialNumber = cr.SerialNumber
+	return name
+}
+
+// Generate creates a new CSR from a CertificateRequest structure and
+// an existing key. The KeyRequest field is ignored.
+func GenerateCSR(priv crypto.Signer, req *CertificateRequest) (csr []byte, err error) {
+	sigAlgo := helpers.SignerAlgo(priv)
+	if sigAlgo == x509.UnknownSignatureAlgorithm {
+		return nil, err
+	}
+
+	var tpl = x509.CertificateRequest{
+		Subject:            req.Name(),
+		SignatureAlgorithm: sigAlgo,
+	}
+
+	for i := range req.Hosts {
+		if ip := net.ParseIP(req.Hosts[i]); ip != nil {
+			tpl.IPAddresses = append(tpl.IPAddresses, ip)
+		} else if email, err := mail.ParseAddress(req.Hosts[i]); err == nil && email != nil {
+			tpl.EmailAddresses = append(tpl.EmailAddresses, email.Address)
+		} else {
+			tpl.DNSNames = append(tpl.DNSNames, req.Hosts[i])
+		}
+	}
+
+	if req.CA != nil {
+		err = appendCAInfoToCSR(req.CA, &tpl)
+		if err != nil {
+			println("Error %s",err)
+			return
+		}
+	}
+
+
+	csr, err = x509.CreateCertificateRequest(rand.Reader, &tpl, priv)
+	if err != nil {
+		fmt.Errorf("failed to generate a CSR: %v", err)
+	
+		return
+	}
+	block := pem.Block{
+		Type:  "CERTIFICATE REQUEST",
+		Bytes: csr,
+	}
+
+	fmt.Println("encoded CSR")
+	fmt.Printf("\n CSR \n%c\n", pem.EncodeToMemory(&block))
+
+	csr = pem.EncodeToMemory(&block)
+	return
+}
+
+func (p11w *Pkcs11Wrapper) BCCSPKeyRequestGenerate(req *CertificateRequest, ec EcdsaKey) (Key, crypto.Signer, error) {
+	
+	/*
+	case *bccsp.ECDSAP256KeyGenOpts:
+		ski, pub, err := csp.generateECKey(oidNamedCurveP256, opts.Ephemeral())
+		if err != nil {
+			return nil, errors.Wrapf(err, "Failed generating ECDSA P256 key")
+		}
+
+		k = &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pub}}
+	*/
+	Sha256Bytes, err := hex.DecodeString(ec.SKI.Sha256)
+	if err != nil {
+		return nil, nil, err
+	}
+	ec.SKI.Sha256Bytes = Sha256Bytes
+
+	//Returns Public Key by Default unless privkeyflag set
+	pubkey, err := p11w.findKeyPairFromSKI(ec.SKI.Sha256Bytes, false)
+	if err != nil {
+		fmt.Printf("count not find key with label %c and byte value %c \n", ec.SKI.Sha256, ec.SKI.Sha256Bytes)
+	}
+	pub := *pubkey
+	ecpt, oid, err := ecPoint(p11w.Context, p11w.Session, pub)
+	if err != nil {
+		fmt.Printf("could not retrieve EC point values %c\n",err)
+	}
+
+	nistCurve := ec.namedCurveFromOID(oid)
+	if nistCurve == nil {
+			return nil, nil, fmt.Errorf("Cound not recognize Curve from OID")
+	}
+	x, y := elliptic.Unmarshal(nistCurve, ecpt)
+	if x == nil {
+			return nil, nil, fmt.Errorf("Failed Unmarshaling Public Key")
+	}
+	//Have SKI and PublicKey
+	pubGoKey := &ecdsa.PublicKey{Curve: nistCurve, X: x, Y: y}
+	fmt.Printf("pubGoKey %c\n", pubGoKey.X)
+	ec.PubKey = pubGoKey
+	var key Key = &ec
+	cspSigner, err := p11w.getSigner(key)
+	//cspSigner, err := cspsigner.New(myCSP, key)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed initializing CryptoSigner %c", err)
+	}
+	return key, cspSigner, nil
+}
+
+func (p11w *Pkcs11Wrapper) getSigner(key Key) (crypto.Signer, error) {
+	// Validate arguments
+	
+	if key == nil {
+		return nil, errors.New("key must be different from nil.")
+	}
+
+	/* TODO:// IMPLEMENT INTERFACE
+	if key.Symmetric() {
+		return nil, errors.New("key must be asymmetric.")
+	}
+	*/
+
+	// Marshall the  public key as a crypto.PublicKey
+	pub, err := key.PublicKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed getting public key %s\n", err)
+	}
+
+	raw, err := pub.Bytes()
+	if err != nil {
+		return nil, fmt.Errorf("failed marshalling public key %s\n", err)
+	}
+
+
+	pk, err := DERToPublicKey(raw)
+	if err != nil {
+		return nil, fmt.Errorf("failed marshalling der to public key %s\n", err)
+	}
+
+	return &bccspCryptoSigner{p11w, key, pk}, nil
+}
+
+type bccspCryptoSigner struct {
+	csp	*Pkcs11Wrapper
+	//csp2 impl
+	key Key
+	pk  interface{}
+}
+
+// Public returns the public key corresponding to the opaque,
+// private key.
+func (s *bccspCryptoSigner) Public() crypto.PublicKey {
+	return s.pk
+}
+
+// Sign signs digest with the private key, possibly using entropy from
+// rand. For an RSA key, the resulting signature should be either a
+// PKCS#1 v1.5 or PSS signature (as indicated by opts). For an (EC)DSA
+// key, it should be a DER-serialised, ASN.1 signature structure.
+//
+// Hash implements the SignerOpts interface and, in most cases, one can
+// simply pass in the hash function used as opts. Sign may also attempt
+// to type assert opts to other types in order to obtain algorithm
+// specific values. See the documentation in each package for details.
+//
+// Note that when a signature of a hash of a larger message is needed,
+// the caller is responsible for hashing the larger message and passing
+// the hash (as digest) and the hash function (as opts) to Sign.
+func (s *bccspCryptoSigner) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) (signature []byte, err error) {
+	//return s.csp.Sign(s.key, digest, opts)
+	return s.csp.Sign(s.key, digest)
+	
+}
+
+func DERToPublicKey(raw []byte) (pub interface{}, err error) {
+	if len(raw) == 0 {
+		return nil, errors.New("Invalid DER. It must be different from nil.")
+	}
+	fmt.Printf("DER Encoded Public Key %c\n", raw)
+	key, err := x509.ParsePKIXPublicKey(raw)
+	fmt.Printf("Public Key %c\n",key)
+
+	return key, err
+}
+
+
+// newCertificateRequest creates a certificate request which is used to generate
+// a CSR (Certificate Signing Request)
+func (p11w *Pkcs11Wrapper) newCertificateRequest(req *CSRInfo) *CertificateRequest {
+	cr := CertificateRequest{}
+	if req != nil && req.Names != nil {
+		cr.Names = req.Names
+	}
+	if req != nil && req.Hosts != nil {
+		cr.Hosts = req.Hosts
+	} else {
+		// Default requested hosts are local hostname
+		hostname, _ := os.Hostname()
+		if hostname != "" {
+			cr.Hosts = make([]string, 1)
+			cr.Hosts[0] = hostname
+		}
+	}
+	if req != nil && req.KeyRequest != nil {
+		cr.KeyRequest = newCfsslBasicKeyRequest(req.KeyRequest)
+	}
+	if req != nil {
+		cr.CA = req.CA
+		cr.SerialNumber = req.SerialNumber
+	}
+	return &cr
+}
+
+func newCfsslBasicKeyRequest(bkr *BasicP11Request) *csr.BasicKeyRequest {
+	return &csr.BasicKeyRequest{A: bkr.A, S: bkr.S}
+}
 
 //TODO implement Public() for crypto.signer
 
@@ -696,24 +1232,24 @@ func (p11w *Pkcs11Wrapper) Public() {
 		KeyRequest: &BasicP11Request{"ecdsa", 256},
 	}
 
-
-func (p11r *BasicP11Request) Generate() (crypto.PrivateKey, error) {
+*/
+func (p11r *BasicP11Request) Generate() {
 	//FAKE the Generate and return a handle to a previously created private key
-	return
+	return 
 }
 
 func (p11r *BasicP11Request) SigAlgo() x509.SignatureAlgorithm {
-	return
+	return 0
 }
 func (p11r *BasicP11Request) Algo() string {
 	return p11r.A
 }
 
-// Size returns the requested key size.
+// Size returns he requested key size.
 func (p11r *BasicP11Request) Size() int {
 	return p11r.S
 }
-*/
+
 
 func (p11w *Pkcs11Wrapper) SignMessage(message string, key pkcs11.ObjectHandle) (signature string, err error) {
 

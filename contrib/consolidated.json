@@ -1,0 +1,13 @@
+{
+	  "hosts":[ "scott.securekey.com", "scottdev.securekey.com" ],
+	  "names":[ {
+		      "c":"CA",
+		      "st":"ONT",
+		      "l":"TORONTO",
+		      "o":"OPS",
+		      "ou":"TESTING"
+		    }
+                  ],
+	  "CN":"scott.securekey.com"
+}
+

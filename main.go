@@ -2,11 +2,15 @@ package main
 
 import (
 	"encoding/hex"
+	//"encoding/json"
+	"io/ioutil"
 	"flag"
 	"fmt"
 	"github.com/miekg/pkcs11"
 	"os"
 	"strings"
+	//"github.com/cloudflare/cfssl/csr"
+	//"github.com/cloudflare/cfssl/log"
 
 	pw "github.com/scottallan/p11tool-new/pkcs11wrapper"
 )
@@ -60,19 +64,22 @@ func CaseInsensitiveContains(s, substr string) bool {
 	return strings.Contains(s, substr)
 }
 
+
+
 func main() {
 
 	// get flags
 	pkcs11Library := flag.String("lib", "", "Location of pkcs11 library")
 	slotLabel := flag.String("slot", "ForFabric", "Slot Label")
 	slotPin := flag.String("pin", "98765432", "Slot PIN")
-	action := flag.String("action", "list", "list,import,generateAndImport,generateSecret,getSKI,SignHMAC384")
+	action := flag.String("action", "list", "list,import,generate,generateAndImport,generateSecret,getSKI,SignHMAC384,generateCSR")
 	keyFile := flag.String("keyFile", "/some/dir/key.pem", "path to key you want to import or getSKI")
 	keyType := flag.String("keyType", "EC", "Type of key (EC,RSA,GENERIC_SECRET,AES)")
 	keyLen := flag.Int("keyLen", 32, "Key Length for CKK_GENERIC_SECRET (32,48,...)")
 	keyLabel := flag.String("keyLabel", "tmpkey", "Label of CKK_GENERIC_SECRET")
 	keyStore := flag.String("keyStore", "file", "Keystore Type (file,pkcs12)")
 	keyStorepass := flag.String("keyStorepass", "securekey", "Keystore Storepass")
+	csrInfo := flag.String("csrInfo", "", "json file with values for CSR Creation")
 
 	flag.Parse()
 
@@ -143,8 +150,54 @@ func main() {
 			err = p11w.ImportRSAKeyFromFile(*keyFile, *keyStore)
 			exitWhenError(err)
 		} else {
-			err = p11w.ImportECKeyFromFile(*keyFile, *keyStore, *keyStorepass)
+			err = p11w.ImportECKeyFromFile(*keyFile, *keyStore, *keyStorepass, *keyLabel)
 			exitWhenError(err)
+		}
+	
+	case "generate":
+		if *keyType == "RSA" {
+			rsa := pw.RsaKey{}
+			p11w.GenerateRSA(rsa)
+		} else if *keyType == "EC" {
+			ec := pw.EcdsaKey{}
+			//TODO pass in from argument
+			ec.NamedCurveAsString = "P-256"
+			_, err := p11w.GenerateEC(ec)
+			exitWhenError(err)
+		}
+
+	case "generateCSR":
+
+		if *keyType == "RSA" {
+			//rsa := pw.RsaKey{}
+			//_, _, err = p11w.GenCSR(rsa)
+			//TODO generate and sign RSA
+		
+		} else if *keyType == "EC" {
+			ec := pw.EcdsaKey{}
+			ec.SKI.Sha256 = *keyLabel
+			
+			csrInfo := ec.GetCSRInfo(*csrInfo)
+			/*ec.Req = &pw.CSRInfo{
+				Names: []pw.Name{names},
+				Hosts: hosts.Hosts,
+			}*/
+			ec.Req = &csrInfo
+		
+			fmt.Println(pw.ToJson(csrInfo))
+
+			csr, _, err := p11w.GenCSR(ec)
+			exitWhenError(err)
+			outFile, err := os.Create("out.pem")
+			if err != nil {
+				return 	
+			}
+			defer outFile.Close()
+			
+			err = ioutil.WriteFile("out.pem",csr,0644)
+			if err != nil {
+				return
+			}
 		}
 
 	case "generateAndImport":
