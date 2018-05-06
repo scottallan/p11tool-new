@@ -152,6 +152,8 @@ func (k *EcdsaKey) Bytes() (raw []byte, err error) {
 	return
 }
 
+
+
 func (k *EcdsaKey) Generate(namedCurve string) (err error) {
 
 	// generate private key
@@ -226,6 +228,7 @@ func (k *EcdsaKey) ImportPrivKeyFromP12(file string, password string) (err error
 		}
 		defer outFile.Close()
 		err = pem.Encode(outFile, &pem.Block{Type: "PRIVATE KEY", Bytes: keyPkcs8})
+	
 		if err != nil {
 			return err
 		}
