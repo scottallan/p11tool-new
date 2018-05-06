@@ -522,7 +522,31 @@ func (p11w *Pkcs11Wrapper) ImportCertificate(ec EcdsaKey) (err error) {
 				// SKI is set but need to use for first in chain only otherwise take from cert.SubjectKeyIdentifier 
 				//Otherwise take the SKI from already set struct
 				//if i == 0 {ec.GenSKI()}
-		}//SKI is SET and the Cert Count is 0 so use what was set
+		} else if i ==0 {//SKI is SET and the Cert Count is 0 so use what was set
+				//Confirm KEY exists for cert[0] otherwise exit.
+				_, err = p11w.findKeyPairFromSKI(ec.SKI.Sha256Bytes, true)
+				if err != nil {
+					fmt.Printf("Private Key not found for Certificate %s\n", err)
+					os.Exit(1)
+				}
+		}
+		certSearchTpl := []*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_CERTIFICATE),
+			pkcs11.NewAttribute(pkcs11.CKA_ID, ec.SKI.Sha256Bytes),
+		}
+		
+		var c []pkcs11.ObjectHandle
+		c, _, err = p11w.FindObjects(certSearchTpl,1)
+		if err != nil{
+			fmt.Printf("Unaable to search for Objects on Token %s\n", err)
+			os.Exit(1)
+		}
+		if len(c) > 0 {
+			fmt.Printf("Found %d existing object(s) with same CKA_ID!!! Exiting", len(c))
+			os.Exit(1)
+		}
+		
+
 		keyTemplate := []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_CERTIFICATE),
 			pkcs11.NewAttribute(pkcs11.CKA_CERTIFICATE_TYPE, pkcs11.CKC_X_509),
@@ -535,6 +559,7 @@ func (p11w *Pkcs11Wrapper) ImportCertificate(ec EcdsaKey) (err error) {
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, cert.Subject.CommonName),
 		}
 		//TODO: Confirm Cert doesnt already exist before importing
+
 		_, err = p11w.Context.CreateObject(p11w.Session, keyTemplate)
 		if err == nil {
 			fmt.Printf("Object was imported with CKA_LABEL:%s\n", cert.Subject)
