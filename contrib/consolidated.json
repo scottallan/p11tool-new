@@ -1,13 +1,13 @@
 {
-	  "hosts":[ "scott.securekey.com", "scottdev.securekey.com" ],
+	  "hosts":[ "scott.gemalto.securekey.com", "scottdev.gemalto.securekey.com" ],
 	  "names":[ {
 		      "c":"CA",
 		      "st":"ONT",
 		      "l":"TORONTO",
 		      "o":"OPS",
-		      "ou":"TESTING"
+		      "ou":"GemaltoLuna"
 		    }
                   ],
-	  "CN":"scott.securekey.com"
+	  "CN":"scott.gemaltotest.securekey.com"
 }
 
