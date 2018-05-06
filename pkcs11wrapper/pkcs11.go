@@ -777,7 +777,7 @@ func ecPoint(Context *pkcs11.Ctx, session pkcs11.SessionHandle, key pkcs11.Objec
 							fmt.Printf("Detected opencryptoki bug, trimming trailing 0x04")
 							ecpt = a.Value[0 : len(a.Value)-1] // Trim trailing 0x04
 					} else if byte(0x04) == a.Value[0] && byte(0x04) == a.Value[2] {
-							fmt.Printf("Detected SoftHSM bug, trimming leading 0x04 0xXX")
+							fmt.Printf("Detected Leading 0x04 on point encoding, trimming leading 0x04 0xXX")
 							ecpt = a.Value[2:len(a.Value)]
 					} else {
 							ecpt = a.Value

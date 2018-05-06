@@ -80,6 +80,7 @@ func main() {
 	keyStore := flag.String("keyStore", "file", "Keystore Type (file,pkcs12)")
 	keyStorepass := flag.String("keyStorepass", "securekey", "Keystore Storepass")
 	csrInfo := flag.String("csrInfo", "", "json file with values for CSR Creation")
+	outF := flag.String("outFile","out.pem","output file for CSR Generation (default ./out.pem")
 
 
 	flag.Parse()
@@ -201,13 +202,14 @@ func main() {
 
 			csr, _, err := p11w.GenCSR(ec)
 			exitWhenError(err)
-			outFile, err := os.Create("out.pem")
+			outFile, err := os.Create(*outF)
 			if err != nil {
+				fmt.Printf("Unable to write CSR %s", err.Error())
 				return 	
 			}
 			defer outFile.Close()
-			
-			err = ioutil.WriteFile("out.pem",csr,0644)
+			fmt.Printf("writing csr to %s\n", *outF)
+			err = ioutil.WriteFile(*outF,csr,0644)
 			if err != nil {
 				return
 			}
