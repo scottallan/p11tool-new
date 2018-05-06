@@ -81,6 +81,7 @@ func main() {
 	keyStorepass := flag.String("keyStorepass", "securekey", "Keystore Storepass")
 	csrInfo := flag.String("csrInfo", "", "json file with values for CSR Creation")
 
+
 	flag.Parse()
 
 	var err error
