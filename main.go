@@ -73,14 +73,14 @@ func main() {
 	slotLabel := flag.String("slot", "ForFabric", "Slot Label")
 	slotPin := flag.String("pin", "98765432", "Slot PIN")
 	action := flag.String("action", "list", "list,import,generate,generateAndImport,generateSecret,getSKI,SignHMAC384,generateCSR,importCert")
-	keyFile := flag.String("keyFile", "/some/dir/key.pem", "path to key you want to import or getSKI")
+	keyFile := flag.String("keyFile", "/some/dir/key.pem)", "path to key you want to import or getSKI")
 	keyType := flag.String("keyType", "EC", "Type of key (EC,RSA,GENERIC_SECRET,AES)")
 	keyLen := flag.Int("keyLen", 32, "Key Length for CKK_GENERIC_SECRET (32,48,...)")
 	keyLabel := flag.String("keyLabel", "tmpkey", "Label of CKK_GENERIC_SECRET")
 	keyStore := flag.String("keyStore", "file", "Keystore Type (file,pkcs12)")
 	keyStorepass := flag.String("keyStorepass", "securekey", "Keystore Storepass")
 	csrInfo := flag.String("csrInfo", "", "json file with values for CSR Creation")
-	outF := flag.String("outFile","out.pem","output file for CSR Generation (default ./out.pem")
+	outF := flag.String("outFile","out.pem","output file for CSR Generation (default ./out.pem)")
 
 
 	flag.Parse()

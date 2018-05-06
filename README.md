@@ -35,6 +35,8 @@ go build -o p11tool-new
     	Slot PIN (default "98765432")
   -slot string
     	Slot Label (default "ForFabric")
+  -outFile string
+      output file for CSR Generation (default ./out.pem)
 ```
 ```
 #Generate CKK_GENERIC_SECRET of 384 bit Length example
@@ -92,7 +94,7 @@ the hosts entries are the SANs (Subject Alternative Names) for the cert.  You ca
 You will need the CKA_ID from the Generate command.  In the example this is given as the value bfab4fe413c945ade535fe6c85d6a3b61a2c0b83c0671c1c24066ce1cad12827
 Once you have modifed the json file you can generate the CSR with the following command:
 
-./p11too-new -action generateCSR -csrInfo contrib/consolidated.json -keyType EC  -keyLabel bfab4fe413c945ade535fe6c85d6a3b61a2c0b83c0671c1c24066ce1cad12827 -slot slot -pin 1234 -lib /usr/safenet/lunaclient/lib/libCryptoki2_64.so
+./p11too-new -action generateCSR -csrInfo contrib/consolidated.json -keyType EC  -keyLabel bfab4fe413c945ade535fe6c85d6a3b61a2c0b83c0671c1c24066ce1cad12827 -slot slot -pin 1234 -lib /usr/safenet/lunaclient/lib/libCryptoki2_64.so -keyFile out.pem
 
 This will output a CSR request into your working directory call out.pem.
 
