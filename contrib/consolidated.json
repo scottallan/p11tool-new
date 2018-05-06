@@ -1,5 +1,5 @@
 {
-	  "hosts":[ "scott.gemalto.securekey.com", "scottdev.gemalto.securekey.com" ],
+	  "hosts":[ "scott.allan.com"  ],
 	  "names":[ {
 		      "c":"CA",
 		      "st":"ONT",
