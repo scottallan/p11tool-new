@@ -4,6 +4,7 @@ import (
 	"github.com/miekg/pkcs11"
 	"os"
 	"strconv"
+	"bytes"
 )
 
 func (p11w *Pkcs11Wrapper) CreateSymKey(objectLabel string, keyLen int, keyType string) (aesKey pkcs11.ObjectHandle, err error) {
@@ -123,3 +124,30 @@ func (p11w *Pkcs11Wrapper) SignHmacSha384(o pkcs11.ObjectHandle, message []byte)
 
 	return
 }
+
+// EncAESGCM test CKM_AES_GCM for encryption
+func (p11w *Pkcs11Wrapper) EncAESGCM(o pkcs11.ObjectHandle, message []byte) (enc []byte, err error) {
+
+	gcparams := pkcs11.NewGCMParams(make([]byte, 12), nil, 128)
+	err = p11w.Context.EncryptInit(
+		p11w.Session,
+		[]*pkcs11.Mechanism{
+			pkcs11.NewMechanism(pkcs11.CKM_AES_GCM, gcparams),
+		},
+		o,
+	)
+	if err != nil {
+		return
+	}
+
+	// do the encryption
+	enc, err = p11w.Context.Encrypt(p11w.Session, message) 
+	if err != nil {
+		return
+	}
+	result := bytes.Join([][]byte{gcparams.IV(), message}, nil)
+	gcparams.Free()
+
+	return result, nil
+}
+
