@@ -245,6 +245,24 @@ func main() {
 		exitWhenError(err)
 		fmt.Printf("successfully tested CKM_SHA384_HMAC on key with LABEL: %s\n HMAC %x\n", *keyLabel, hmac)
 
+	case "TestAESGCM":
+		pkcs11Attr := pkcs11.NewAttribute(pkcs11.CKA_LABEL, *keyLabel)
+		p11w.ListObjects(
+			[]*pkcs11.Attribute{
+				pkcs11Attr,
+			}, 50,
+		)
+		o, _, err := p11w.FindObjects([]*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_LABEL, *keyLabel),
+		},
+			1,
+		)
+		exitWhenError(err)
+		testMsg := []byte("someRandomString")
+		enc, err := p11w.EncAESGCM(o[0], testMsg)
+		exitWhenError(err)
+		fmt.Printf("successfully encrypted with message '%v' with CKM_AES_GCM and key with LABEL: %s\n CipherText %x\n",testMsg, *keyLabel, enc)	
+
 	case "generateSecret":
 		if *keyType == "GENERIC_SECRET" {
 			//Generate Key
