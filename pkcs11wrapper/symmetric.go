@@ -128,7 +128,8 @@ func (p11w *Pkcs11Wrapper) SignHmacSha384(o pkcs11.ObjectHandle, message []byte)
 // EncAESGCM test CKM_AES_GCM for encryption
 func (p11w *Pkcs11Wrapper) EncAESGCM(o pkcs11.ObjectHandle, message []byte) (enc []byte, err error) {
 
-	gcparams := pkcs11.NewGCMParams(make([]byte, 12), nil, 128)
+	//gcparams := pkcs11.NewGCMParams(make([]byte, 12), nil, 128)
+	gcparams := pkcs11.NewGCMParams(nil, nil, 128)
 	err = p11w.Context.EncryptInit(
 		p11w.Session,
 		[]*pkcs11.Mechanism{
