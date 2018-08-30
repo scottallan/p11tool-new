@@ -146,15 +146,37 @@ func (p11w *Pkcs11Wrapper) EncAESGCM(o pkcs11.ObjectHandle, message []byte) (enc
 	if err != nil {
 		return
 	}
-	IV = enc[0:16]
+	//IV = enc[0:16]
+	//IV is appended to End in Gemalto
+	IV = enc[len(enc)-16:]
 	result := bytes.Join([][]byte{gcparams.IV(), enc}, nil)
+	//the above results in the join as equal to enc as IV() returns nil for Gemalto Testing
 	gcparams.Free()
 
 	return result, IV, nil
 }
 
 // DecAESGCM test CKM_AES_GCM for Decryption
-func (p11w *Pkcs11Wrapper) DecAESGCM(o pkcs11.ObjectHandle, ciphertext []byte, IV []byte) (message []byte, err error) {
+func (p11w *Pkcs11Wrapper) DecAESGCM(o pkcs11.ObjectHandle, cipherText []byte, IV []byte) (message []byte, err error) {
+
+	//gcparams := pkcs11.NewGCMParams(make([]byte, 16), nil, 128)
+        gcparams := pkcs11.NewGCMParams(IV, nil, 128)
+	err = p11w.Context.DecryptInit(
+		p11w.Session,
+		[]*pkcs11.Mechanism{
+                        pkcs11.NewMechanism(pkcs11.CKM_AES_GCM, gcparams),
+                },
+		o,
+	)
+	if err != nil {
+		return nil, err
+	}
+	cipherText = cipherText[:len(cipherText)-16]
+	message, err = p11w.Context.Decrypt(p11w.Session, cipherText)
+	if err != nil {
+		return nil, err
+	}
+	gcparams.Free()
 
 	return
 }

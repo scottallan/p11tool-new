@@ -259,10 +259,13 @@ func main() {
 			1,
 		)
 		exitWhenError(err)
-		testMsg := []byte("1")
+		testMsg := []byte("ThisIsATestClearTextString")
 		enc, iv, err := p11w.EncAESGCM(o[0], testMsg)
 		exitWhenError(err)
-		fmt.Printf("successfully encrypted  message '%s' with CKM_AES_GCM and key with LABEL: %s\n CipherText %v\n IV: %v\n",testMsg, *keyLabel, enc, iv)	
+		fmt.Printf("successfully encrypted  message '%s' with CKM_AES_GCM and key with LABEL: %s\n CipherText %v\n IV: %v\n",testMsg, *keyLabel, enc, iv)
+		dec, err := p11w.DecAESGCM(o[0], enc, iv)
+		exitWhenError(err)
+		fmt.Printf("successfully decrypted ciptherText '%v' with CKM_AES_GCM and key with LABEL: %s\n ClearText %s\n",enc, *keyLabel, dec)
 
 	case "generateSecret":
 		if *keyType == "GENERIC_SECRET" {
