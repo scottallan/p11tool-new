@@ -80,7 +80,8 @@ func main() {
 	keyStore := flag.String("keyStore", "file", "Keystore Type (file,pkcs12)")
 	keyStorepass := flag.String("keyStorepass", "securekey", "Keystore Storepass")
 	csrInfo := flag.String("csrInfo", "", "json file with values for CSR Creation")
-	outF := flag.String("outFile","out.pem","output file for CSR Generation (default ./out.pem)")
+        outF := flag.String("outFile","out.pem","output file for CSR Generation")
+        maxObjectsToList := flag.Int("maxObjectsToList", 50, "Paramter to be used with -action list to specify how many objects to print")
 
 
 	flag.Parse()
@@ -232,7 +233,7 @@ func main() {
 		p11w.ListObjects(
 			[]*pkcs11.Attribute{
 				pkcs11_attr,
-			}, 50,
+			}, *maxObjectsToList,
 		)
 		o, _, err := p11w.FindObjects([]*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, *keyLabel),
@@ -250,7 +251,7 @@ func main() {
 		p11w.ListObjects(
 			[]*pkcs11.Attribute{
 				pkcs11Attr,
-			}, 50,
+			},  *maxObjectsToList,
 		)
 		o, _, err := p11w.FindObjects([]*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, *keyLabel),
@@ -258,10 +259,10 @@ func main() {
 			1,
 		)
 		exitWhenError(err)
-		testMsg := []byte("someRandomString")
-		enc, err := p11w.EncAESGCM(o[0], testMsg)
+		testMsg := []byte("1")
+		enc, iv, err := p11w.EncAESGCM(o[0], testMsg)
 		exitWhenError(err)
-		fmt.Printf("successfully encrypted with message '%v' with CKM_AES_GCM and key with LABEL: %s\n CipherText %x\n",testMsg, *keyLabel, enc)	
+		fmt.Printf("successfully encrypted  message '%s' with CKM_AES_GCM and key with LABEL: %s\n CipherText %v\n IV: %v\n",testMsg, *keyLabel, enc, iv)	
 
 	case "generateSecret":
 		if *keyType == "GENERIC_SECRET" {
@@ -274,7 +275,7 @@ func main() {
 			fmt.Printf("Successfully tested CKM_SHA384_HMAC on key with label: %s \n HMAC %x\n", *keyLabel, hmac)
 			p11w.ListObjects(
 				[]*pkcs11.Attribute{},
-				50,
+				 *maxObjectsToList,
 			)
 
 		}
@@ -380,7 +381,7 @@ func main() {
 	default:
 		p11w.ListObjects(
 			[]*pkcs11.Attribute{},
-			50,
+			 *maxObjectsToList,
 		)
 
 	}

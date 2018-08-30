@@ -126,10 +126,10 @@ func (p11w *Pkcs11Wrapper) SignHmacSha384(o pkcs11.ObjectHandle, message []byte)
 }
 
 // EncAESGCM test CKM_AES_GCM for encryption
-func (p11w *Pkcs11Wrapper) EncAESGCM(o pkcs11.ObjectHandle, message []byte) (enc []byte, err error) {
+func (p11w *Pkcs11Wrapper) EncAESGCM(o pkcs11.ObjectHandle, message []byte) (enc []byte, IV []byte,  err error) {
 
-	//gcparams := pkcs11.NewGCMParams(make([]byte, 12), nil, 128)
-	gcparams := pkcs11.NewGCMParams(nil, nil, 128)
+	//gcparams := pkcs11.NewGCMParams(make([]byte, 16), nil, 128)
+	gcparams := pkcs11.NewGCMParams([]byte{}, nil, 128)
 	err = p11w.Context.EncryptInit(
 		p11w.Session,
 		[]*pkcs11.Mechanism{
@@ -146,9 +146,16 @@ func (p11w *Pkcs11Wrapper) EncAESGCM(o pkcs11.ObjectHandle, message []byte) (enc
 	if err != nil {
 		return
 	}
-	result := bytes.Join([][]byte{gcparams.IV(), message}, nil)
+	IV = enc[0:16]
+	result := bytes.Join([][]byte{gcparams.IV(), enc}, nil)
 	gcparams.Free()
 
-	return result, nil
+	return result, IV, nil
+}
+
+// DecAESGCM test CKM_AES_GCM for Decryption
+func (p11w *Pkcs11Wrapper) DecAESGCM(o pkcs11.ObjectHandle, ciphertext []byte, IV []byte) (message []byte, err error) {
+
+	return
 }
 
