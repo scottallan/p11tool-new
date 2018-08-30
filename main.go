@@ -80,7 +80,8 @@ func main() {
 	keyStore := flag.String("keyStore", "file", "Keystore Type (file,pkcs12)")
 	keyStorepass := flag.String("keyStorepass", "securekey", "Keystore Storepass")
 	csrInfo := flag.String("csrInfo", "", "json file with values for CSR Creation")
-	outF := flag.String("outFile","out.pem","output file for CSR Generation (default ./out.pem)")
+	outF := flag.String("outFile","out.pem","output file for CSR Generation")
+	maxObjectsToList := flag.Int("maxObjectsToList", 50, "Paramter to be used with -action list to specify how many objects to print")
 
 
 	flag.Parse()
@@ -380,7 +381,7 @@ func main() {
 	default:
 		p11w.ListObjects(
 			[]*pkcs11.Attribute{},
-			50,
+			*maxObjectsToList,
 		)
 
 	}
