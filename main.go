@@ -82,6 +82,8 @@ func main() {
 	csrInfo := flag.String("csrInfo", "", "json file with values for CSR Creation")
         outF := flag.String("outFile","out.pem","output file for CSR Generation")
         maxObjectsToList := flag.Int("maxObjectsToList", 50, "Paramter to be used with -action list to specify how many objects to print")
+	outF := flag.String("outFile","out.pem","output file for CSR Generation")
+	maxObjectsToList := flag.Int("maxObjectsToList", 50, "Paramter to be used with -action list to specify how many objects to print")
 
 
 	flag.Parse()
