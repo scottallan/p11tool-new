@@ -52,14 +52,22 @@ func (p11w *Pkcs11Wrapper) CreateSymKey(objectLabel string, keyLen int, keyType 
 func (p11w *Pkcs11Wrapper) GetSymPkcs11Template(objectLabel string, keyLen int, keyType string) (SymPkcs11Template []*pkcs11.Attribute) {
 
 	// default CKA_KEY_TYPE
-	var pkcs11_keytype *pkcs11.Attribute
+	var pkcs11VendorAttr []*pkcs11.Attribute
 	switch keyType {
 	case "AES":
-		pkcs11_keytype = pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_AES)
+		pkcs11VendorAttr = []*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_AES),
+			pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, true),
+			pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, true),
+		}
 	case "GENERIC_SECRET":
-		pkcs11_keytype = pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET)
+		pkcs11VendorAttr = []*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET),
+		}
 	default:
-		pkcs11_keytype = pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET)
+		pkcs11VendorAttr = []*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET),
+		}
 	}
 
 	// Overrides env first, then autodetect from vendor
@@ -89,6 +97,7 @@ func (p11w *Pkcs11Wrapper) GetSymPkcs11Template(objectLabel string, keyLen int, 
 
 	// Scott's Reference
 	// default template common to all manufactures
+
 	SymPkcs11Template = []*pkcs11.Attribute{
 		// common to all
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, objectLabel),      /* Name of Key */
@@ -96,8 +105,8 @@ func (p11w *Pkcs11Wrapper) GetSymPkcs11Template(objectLabel string, keyLen int, 
 		pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, SymKeyLength), /* KeyLength */
 		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
 		// vendor specific override
-		pkcs11_keytype,
 	}
+	SymPkcs11Template = append(SymPkcs11Template, pkcs11VendorAttr...)
 	return
 }
 

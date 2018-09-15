@@ -283,6 +283,18 @@ func main() {
 
 		}
 
+	case "generateAES":
+		if *keyType == "AES" {
+			//Generate Key
+			_, err := p11w.CreateSymKey(*keyLabel, *keyLen, *keyType)
+			exitWhenError(err)
+			p11w.ListObjects(
+				[]*pkcs11.Attribute{},
+				 *maxObjectsToList,
+			)
+
+		}
+
 	case "testEc":
 
 		message := "Some Test Message"
