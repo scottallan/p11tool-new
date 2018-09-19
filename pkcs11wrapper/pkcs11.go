@@ -167,6 +167,7 @@ func init() {
 	CKA_KEY_TYPE_MAP = map[byte]string{
 		pkcs11.CKK_GENERIC_SECRET: "CKK_GENERIC_SECRET",
 		pkcs11.CKK_AES:            "CKK_AES",
+		pkcs11.CKK_DES3:		   "CKK_DES3",
 		pkcs11.CKK_RSA:            "CKK_RSA",
 		pkcs11.CKK_ECDSA:          "CKK_ECDSA",
 		pkcs11.CKK_SHA256_HMAC:    "CKK_SHA256_HMAC",

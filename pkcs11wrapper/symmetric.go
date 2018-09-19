@@ -15,6 +15,8 @@ func (p11w *Pkcs11Wrapper) CreateSymKey(objectLabel string, keyLen int, keyType 
 		pkcs11_mech = pkcs11.NewMechanism(pkcs11.CKM_AES_KEY_GEN, nil)
 	case "GENERIC_SECRET":
 		pkcs11_mech = pkcs11.NewMechanism(pkcs11.CKM_GENERIC_SECRET_KEY_GEN, nil)
+	case "DES3":
+		pkcs11_mech = pkcs11.NewMechanism(pkcs11.CKM_DES3_KEY_GEN, nil)
 	default:
 		pkcs11_mech = pkcs11.NewMechanism(pkcs11.CKM_GENERIC_SECRET_KEY_GEN, nil)
 	}
@@ -59,7 +61,18 @@ func (p11w *Pkcs11Wrapper) GetSymPkcs11Template(objectLabel string, keyLen int, 
 			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_AES),
 			pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, true),
 			pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, true),
-		}
+		}	
+	case "DES3":
+		pkcs11VendorAttr = []*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_DES3),
+			pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
+			pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
+			pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, true),
+			pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, true),
+			pkcs11.NewAttribute(pkcs11.CKA_WRAP, true),
+			pkcs11.NewAttribute(pkcs11.CKA_UNWRAP, true),
+		}	
+	
 	case "GENERIC_SECRET":
 		pkcs11VendorAttr = []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET),
