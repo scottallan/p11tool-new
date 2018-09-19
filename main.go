@@ -74,7 +74,7 @@ func main() {
 	slotPin := flag.String("pin", "98765432", "Slot PIN")
 	action := flag.String("action", "list", "list,import,generate,generateAndImport,generateSecret,generateAES,generateDES,getSKI,SignHMAC384, TestAESGCM, generateCSR,importCert")
 	keyFile := flag.String("keyFile", "/some/dir/key.pem)", "path to key you want to import or getSKI")
-	keyType := flag.String("keyType", "EC", "Type of key (EC,RSA,GENERIC_SECRET,AES)")
+	keyType := flag.String("keyType", "EC", "Type of key (EC,RSA,GENERIC_SECRET,AES, DES3)")
 	keyLen := flag.Int("keyLen", 32, "Key Length for CKK_GENERIC_SECRET (32,48,...)")
 	keyLabel := flag.String("keyLabel", "tmpkey", "Label of CKK_GENERIC_SECRET")
 	keyStore := flag.String("keyStore", "file", "Keystore Type (file,pkcs12)")
@@ -296,7 +296,7 @@ func main() {
 		}
 
 	case "generateDES":
-		if *keyType == "DES" {
+		if *keyType == "DES3" {
 			//Generate DES Key
 			_, err := p11w.CreateSymKey(*keyLabel, 24, *keyType)
 			exitWhenError(err)
