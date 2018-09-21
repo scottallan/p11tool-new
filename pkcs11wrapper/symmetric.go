@@ -77,6 +77,10 @@ func (p11w *Pkcs11Wrapper) GetSymPkcs11Template(objectLabel string, keyLen int, 
 		pkcs11VendorAttr = []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET),
 		}
+	case "SHA265_HMAC":
+		pkcs11VendorAttr = []*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_SHA256_HMAC),
+		}
 	default:
 		pkcs11VendorAttr = []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET),
