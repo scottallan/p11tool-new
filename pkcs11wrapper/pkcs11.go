@@ -802,7 +802,9 @@ func (p11w *Pkcs11Wrapper) GenerateEC(ec EcdsaKey) (ski []byte, err error) {
 	prvlabel := fmt.Sprintf("BCPRV%s", "1")
 	//TODO pass curve into function
 
+	/*REMOVE:  TODO add all templates to external file
 	ec.exportable = true
+	*/
 	ec.ephemeral = false
 	
 
@@ -833,7 +835,9 @@ func (p11w *Pkcs11Wrapper) GenerateEC(ec EcdsaKey) (ski []byte, err error) {
 			pkcs11.NewAttribute(pkcs11.CKA_ID, prvlabel),
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, prvlabel),
 
+			/*REMOVE Explicit Attribute Setting
 			pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, ec.exportable),
+			*/
 	}
 
 
