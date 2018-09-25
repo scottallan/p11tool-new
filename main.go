@@ -74,7 +74,7 @@ func main() {
 	slotPin := flag.String("pin", "98765432", "Slot PIN")
 	action := flag.String("action", "list", "list,import,generate,generateAndImport,generateSecret,generateAES,generateDES,getSKI,SignHMAC384, TestAESGCM, generateCSR,importCert")
 	keyFile := flag.String("keyFile", "/some/dir/key.pem)", "path to key you want to import or getSKI")
-	keyType := flag.String("keyType", "EC", "Type of key (EC,RSA,GENERIC_SECRET,AES,SHA256_HMAC,DES3)")
+	keyType := flag.String("keyType", "EC", "Type of key (EC,RSA,GENERIC_SECRET,AES,SHA256_HMAC,SHA384_HMAC,DES3)")
 	keyLen := flag.Int("keyLen", 32, "Key Length for CKK_GENERIC_SECRET (32,48,...)")
 	keyLabel := flag.String("keyLabel", "tmpkey", "Label of CKK_GENERIC_SECRET")
 	keyStore := flag.String("keyStore", "file", "Keystore Type (file,pkcs12)")
@@ -268,7 +268,7 @@ func main() {
 		fmt.Printf("successfully decrypted ciptherText '%v' with CKM_AES_GCM and key with LABEL: %s\n ClearText %s\n",enc, *keyLabel, dec)
 
 	case "generateSecret":
-		if *keyType == "GENERIC_SECRET" {
+		if *keyType == "GENERIC_SECRET" || *keyType == "SHA256_HMAC" || *keyType == "SHA384_HMAC" {
 			//Generate Key
 			symKey, err := p11w.CreateSymKey(*keyLabel, *keyLen, *keyType)
 			exitWhenError(err)
