@@ -72,7 +72,7 @@ func main() {
 	pkcs11Library := flag.String("lib", "", "Location of pkcs11 library")
 	slotLabel := flag.String("slot", "ForFabric", "Slot Label")
 	slotPin := flag.String("pin", "98765432", "Slot PIN")
-	action := flag.String("action", "list", "list,import,generate,generateAndImport,generateSecret,generateAES,generateDES,getSKI,SignHMAC384, TestAESGCM, generateCSR,importCert")
+	action := flag.String("action", "list", "list,import,generate,generateAndImport,generateSecret,generateAES,generateDES,unwrapECWithDES3,getSKI,SignHMAC384,TestAESGCM, generateCSR,importCert")
 	keyFile := flag.String("keyFile", "/some/dir/key.pem)", "path to key you want to import or getSKI")
 	keyType := flag.String("keyType", "EC", "Type of key (EC,RSA,GENERIC_SECRET,AES,SHA256_HMAC,SHA384_HMAC,DES3)")
 	keyLen := flag.Int("keyLen", 32, "Key Length for CKK_GENERIC_SECRET (32,48,...)")
@@ -80,8 +80,9 @@ func main() {
 	keyStore := flag.String("keyStore", "file", "Keystore Type (file,pkcs12)")
 	keyStorepass := flag.String("keyStorepass", "securekey", "Keystore Storepass")
 	csrInfo := flag.String("csrInfo", "", "json file with values for CSR Creation")
-        outF := flag.String("outFile","out.pem","output file for CSR Generation")
-        maxObjectsToList := flag.Int("maxObjectsToList", 50, "Paramter to be used with -action list to specify how many objects to print")
+	wrapKey := falg.String("wrapKey" "wrapKey", "DES3 Wrapping Key for unwrapping key material onto Gemalto")
+    outF := flag.String("outFile","out.pem","output file for CSR Generation")
+    maxObjectsToList := flag.Int("maxObjectsToList", 50, "Paramter to be used with -action list to specify how many objects to print")
 
 
 	flag.Parse()
@@ -245,6 +246,19 @@ func main() {
 		hmac, err := p11w.SignHmacSha384(o[0], testMsg)
 		exitWhenError(err)
 		fmt.Printf("successfully tested CKM_SHA384_HMAC on key with LABEL: %s\n HMAC %x\n", *keyLabel, hmac)
+	
+	case "unwrapECWithDES3":	
+		w, _, err := p11w.FindObjects([]*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_LABEL, *wrapKey),
+			},
+			1,
+		)
+		exitWhenError(err)
+
+		if *keyType == "EC" {
+			err := p11w.UnWrapECKeyFromFile(*keyFile, *keyStore, *keyStorepass, *keyLabel, w[0])
+			exitWhenError(err)
+		}
 
 	case "TestAESGCM":
 		pkcs11Attr := pkcs11.NewAttribute(pkcs11.CKA_LABEL, *keyLabel)
