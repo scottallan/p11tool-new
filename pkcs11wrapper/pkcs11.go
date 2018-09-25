@@ -763,6 +763,8 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(o pkcs11.ObjectHandle, w []byte, keyLabel
 	}
 	//TODO : Wrap key first ;)
 	//_, err = p11w.Context.CreateObject(p11w.Session, keyTemplate)
+
+	/* FIXUP
 	_, err = p11w.Context.UnwrapKey(
 		p11w.Session,
 		[]*pkcs11.Mechanism{
@@ -778,13 +780,13 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(o pkcs11.ObjectHandle, w []byte, keyLabel
 		return
 	} else {
 		fmt.Printf("Object was imported with CKA_LABEL:%s\n", keyLabel)
-	}
+	} */
 	return
 
 }
 
 //UnWrapECKeyFromFile takes a EC Key from file imput and unwraps onto an HSM
-func (p11w *Pkcs11Wrapper) UnWrapECKeyFromFile(file string, keyStore string, keyStorepass string, keyLabel string, w []byte) (err error) {
+func (p11w *Pkcs11Wrapper) UnWrapECKeyFromFile(file string, keyStore string, keyStorepass string, keyLabel string, w pkcs11.ObjectHandle) (err error) {
 // read in key from file
 	//ec := EcdsaKey{}
 	var ec EcdsaKey
@@ -807,6 +809,7 @@ func (p11w *Pkcs11Wrapper) UnWrapECKeyFromFile(file string, keyStore string, key
 			}
 		}
 	
+	
 	wrappedKey, err := p11w.WrapECKey(ec, w)
 	if err != nil {
 		fmt.Printf("Unable to WRAP EC Key %v with key %v", ec.PrivKey.Curve, w)
@@ -828,7 +831,7 @@ func (p11w *Pkcs11Wrapper) UnWrapECKeyFromFile(file string, keyStore string, key
 }
 
 //WrapECKey Wraps an EC Key
-func (p11w *Pkcs11Wrapper) WrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle) (wrappedKey pkcs11.ObjectHandle, err error) {
+func (p11w *Pkcs11Wrapper) WrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle) (wrappedKey []byte, err error) {
 	if ec.PrivKey == nil {
 		err = errors.New("no key to WRAP")
 		return
@@ -841,14 +844,15 @@ func (p11w *Pkcs11Wrapper) WrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle) (wrappe
 		return
 	}
 
-	Wraped, err := p11w.Context.WrapKey(
+	/*FIXUP
+	wrappedKey, err := p11w.Context.WrapKey(
 		p11w.Session,
 		[]*pkcs11.Mechanism{
 			pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,nil),
 		},
 		"wrappingKey",
 		w,	
-	)
+	) */
 	err := p11w.Context.EncryptInit(
 		p11w.Session,
 		[]*pkcs11.Mechanism{
