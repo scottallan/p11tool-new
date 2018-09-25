@@ -5,13 +5,6 @@
 package pkcs11
 
 const (
-	NFCK_VENDOR_NCIPHER 	= 0xde436972
-	CKA_NCIPHER 	= NFCK_VENDOR_NCIPHER
-	CKM_NCIPHER 	= NFCK_VENDOR_NCIPHER
-	CKK_NCIPHER 	= NFCK_VENDOR_NCIPHER
-)
-
-const (
 	CKU_SO               uint = 0
 	CKU_USER             uint = 1
 	CKU_CONTEXT_SPECIFIC uint = 2
@@ -685,11 +678,4 @@ const (
 	CKF_EXCLUDE_CHALLENGE                = 0x00000008
 	CKF_EXCLUDE_PIN                      = 0x00000010
 	CKF_USER_FRIENDLY_OTP                = 0x00000020
-)
-
-const (
-	CKM_NC_SHA224_HMAC_KEY_GEN    	= (CKM_NCIPHER + 0x24) /* no params */
-	CKM_NC_SHA256_HMAC_KEY_GEN    	= (CKM_NCIPHER + 0x25) /* no params */
-	CKM_NC_SHA384_HMAC_KEY_GEN    	= (CKM_NCIPHER + 0x26) /* no params */
-	CKM_NC_SHA512_HMAC_KEY_GEN    	= (CKM_NCIPHER + 0x27) /* no params */
 )
