@@ -741,7 +741,7 @@ func (p11w *Pkcs11Wrapper) ImportECKeyFromFile(file string, keyStore string, key
 }
 
 //UnwrapECKeye EC Key Wrapped with DES3 Key
-func (p11w *Pkcs11Wrapper) UnwrapECKey(o pkcs11.ObjectHandle, w pkcs11.ObjectHandle, keyLabel string) (err error) {
+func (p11w *Pkcs11Wrapper) UnwrapECKey(o pkcs11.ObjectHandle, w []byte, keyLabel string) (err error) {
 
 	keyTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
