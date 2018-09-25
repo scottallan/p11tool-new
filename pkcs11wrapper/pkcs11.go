@@ -740,6 +740,130 @@ func (p11w *Pkcs11Wrapper) ImportECKeyFromFile(file string, keyStore string, key
 
 }
 
+//UnwrapECKeye EC Key Wrapped with DES3 Key
+func (p11w *Pkcs11Wrapper) UnwrapECKey(o pkcs11.ObjectHandle, w pkcs11.ObjectHandle, keyLabel string) (err error) {
+
+	keyTemplate := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
+		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
+		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
+		//SA-Sep19 pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, marshaledOID),
+
+		///SA-Sep19 pkcs11.NewAttribute(pkcs11.CKA_ID, ec.SKI.Sha256Bytes),
+		///SA-Sep19 pkcs11.NewAttribute(pkcs11.CKA_LABEL, ec.keyLabel),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, keyLabel),
+		pkcs11.NewAttribute(pkcs11.CKR_ATTRIBUTE_SENSITIVE, true),
+		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
+		///SA-Sep19 pkcs11.NewAttribute(pkcs11.CKA_VALUE, ec.PrivKey.D.Bytes()),
+
+		// implicitly enable derive for now
+		//pkcs11.NewAttribute(pkcs11.CKA_DERIVE, true),
+	}
+	//TODO : Wrap key first ;)
+	//_, err = p11w.Context.CreateObject(p11w.Session, keyTemplate)
+	_, err = p11w.Context.UnwrapKey(
+		p11w.Session,
+		[]*pkcs11.Mechanism{
+		pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,nil),
+		},
+		o,
+		w,
+		keyTemplate,
+	)
+
+	if err != nil {
+		fmt.Printf("Object FAILED TO IMPORT with CKA_LABEL:%s CKA_ID:%x\n ERROR %s", ec.keyLabel, ec.SKI.Sha256Bytes, err)
+		return
+	} else {
+		fmt.Printf("Object was imported with CKA_LABEL:%s CKA_ID:%x\n", ec.keyLabel, ec.SKI.Sha256Bytes)
+	}
+	return
+
+}
+
+//UnWrapECKeyFromFile takes a EC Key from file imput and unwraps onto an HSM
+func (p11w *Pkcs11Wrapper) UnWrapECKeyFromFile(file string, keyStore string, keyStorepass string, keyLabel string, w pkcs11.ObjectHandle) (err error) {
+// read in key from file
+	//ec := EcdsaKey{}
+	var ec EcdsaKey
+
+	//err = ec.ImportPrivKeyFromFile(file)
+	switch keyStore {
+		case "p12":
+			ec = EcdsaKey{}
+			ec.keyLabel = keyLabel
+			err = ec.ImportPrivKeyFromP12(file, keyStorepass)
+			if err != nil {
+			return err
+			}
+		default:
+			ec = EcdsaKey{}
+			ec.keyLabel = keyLabel
+			err = ec.ImportPrivKeyFromFile(file)
+			if err != nil {
+				return err
+			}
+		}
+	
+	wrappedKey, err := p11w.WrapECKey(ec, w)
+	if err != nil {
+		fmt.Printf("Unable to WRAP EC Key %v with key %v", ec.PrivKey.Curve, w)
+		return err
+	}
+	err := p11w.UnwrapECKey(wrappedKey, w, keyLabel)
+	if err != nil {
+		fmt.Printf("Unable to UnWRAP EC Key")
+		return err
+	}
+
+	/* import key to hsm
+	err = p11w.UnwrapECKey(ec)
+	if len(ec.Certificate) != 0 {
+		err = p11w.ImportCertificate(ec)
+	}*/
+
+	return
+}
+
+//WrapECKey Wraps an EC Key
+func (p11w *Pkcs11Wrapper) WrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle) (wrappedKey pkcs11.ObjectHandle, err error) {
+	if ec.PrivKey == nil {
+		err = errors.New("no key to WRAP")
+		return
+	}
+
+	ec.GenSKI()
+
+	marshaledOID, err := GetECParamMarshaled(ec.PrivKey.Params().Name)
+	if err != nil {
+		return
+	}
+
+	Wraped, err := p11w.Context.WrapKey(
+		p11w.Session,
+		pkcs11.Mechanism{
+			pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,nil),
+		},
+		
+	)
+	err := p11w.Context.EncryptInit(
+		p11w.Session,
+		pkcs11.Mechanism{
+			pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,nil),	
+		},
+		w,
+	)
+	wrap, err := p11w.Context.Encrypt(
+		p11w.Session,
+		
+	)
+
+
+	return
+}
+
 func (p11w *Pkcs11Wrapper) ImportRSAKeyFromFile(file string, keyStore string) (err error) {
 
 	// read in key from file
