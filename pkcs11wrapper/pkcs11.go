@@ -774,17 +774,17 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(o pkcs11.ObjectHandle, w []byte, keyLabel
 	)
 
 	if err != nil {
-		fmt.Printf("Object FAILED TO IMPORT with CKA_LABEL:%s CKA_ID:%x\n ERROR %s", ec.keyLabel, ec.SKI.Sha256Bytes, err)
+		fmt.Printf("Object FAILED TO IMPORT with CKA_LABEL:%s\n ERROR %s", keyLabel, err)
 		return
 	} else {
-		fmt.Printf("Object was imported with CKA_LABEL:%s CKA_ID:%x\n", ec.keyLabel, ec.SKI.Sha256Bytes)
+		fmt.Printf("Object was imported with CKA_LABEL:%s\n", keyLabel)
 	}
 	return
 
 }
 
 //UnWrapECKeyFromFile takes a EC Key from file imput and unwraps onto an HSM
-func (p11w *Pkcs11Wrapper) UnWrapECKeyFromFile(file string, keyStore string, keyStorepass string, keyLabel string, w pkcs11.ObjectHandle) (err error) {
+func (p11w *Pkcs11Wrapper) UnWrapECKeyFromFile(file string, keyStore string, keyStorepass string, keyLabel string, w []byte) (err error) {
 // read in key from file
 	//ec := EcdsaKey{}
 	var ec EcdsaKey
@@ -812,7 +812,7 @@ func (p11w *Pkcs11Wrapper) UnWrapECKeyFromFile(file string, keyStore string, key
 		fmt.Printf("Unable to WRAP EC Key %v with key %v", ec.PrivKey.Curve, w)
 		return err
 	}
-	err := p11w.UnwrapECKey(wrappedKey, w, keyLabel)
+	err = p11w.UnwrapECKey(wrappedKey, w, keyLabel)
 	if err != nil {
 		fmt.Printf("Unable to UnWRAP EC Key")
 		return err
@@ -843,22 +843,23 @@ func (p11w *Pkcs11Wrapper) WrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle) (wrappe
 
 	Wraped, err := p11w.Context.WrapKey(
 		p11w.Session,
-		pkcs11.Mechanism{
+		[]*pkcs11.Mechanism{
 			pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,nil),
 		},
-		
+		"wrappingKey",
+		w,	
 	)
 	err := p11w.Context.EncryptInit(
 		p11w.Session,
-		pkcs11.Mechanism{
+		[]*pkcs11.Mechanism{
 			pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,nil),	
 		},
 		w,
 	)
-	wrap, err := p11w.Context.Encrypt(
+	/*wrap, err := p11w.Context.Encrypt(
 		p11w.Session,
 		
-	)
+	)*/
 
 
 	return
