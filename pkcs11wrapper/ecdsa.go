@@ -40,6 +40,7 @@ type EcdsaKey struct {
 	curveOid	asn1.RawValue
 	ephemeral	bool
 	exportable	bool
+	Token		bool
 
 	Req	*CSRInfo
 }
