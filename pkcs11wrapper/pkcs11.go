@@ -817,13 +817,21 @@ func (p11w *Pkcs11Wrapper) WrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle) (wrappe
 		},
 		w, //Wrapping Key
 	)
+	if err != nil {
+		fmt.Printf("Unable to Initialise Encryptor %v with key %v", err, w)
+		return nil, err
+	}
 	wrappedKey, err := p11w.Context.Encrypt(
 		p11w.Session,
-		ec.PrivKey.D.Bytes(),
+		ec.PrivKey.D.
 	)
+	if err != nil {
+		fmt.Printf("Unable to Encrypt Key : %v", err)
+		return nil, err
+	}
 
 
-	return
+	return 
 }
 
 //UnwrapECKeye EC Key Wrapped with DES3 Key
@@ -862,7 +870,7 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(w pkcs11.ObjectHandle, wrappedKey []byte,
 	)
 
 	if err != nil {
-		fmt.Printf("Object FAILED TO IMPORT with CKA_LABEL:%s\n ERROR %s", keyLabel, err)
+		fmt.Printf("Object FAILED TO IMPORT with CKA_LABEL:%s\n ERROR %s \n %v", keyLabel, err, w)
 		return
 	} else {
 		fmt.Printf("Object was imported with CKA_LABEL:%s\n", keyLabel)

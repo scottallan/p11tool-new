@@ -248,12 +248,12 @@ func main() {
 		fmt.Printf("successfully tested CKM_SHA384_HMAC on key with LABEL: %s\n HMAC %x\n", *keyLabel, hmac)
 	
 	case "unwrapECWithDES3":	
-		w, _, err := p11w.FindObjects([]*pkcs11.Attribute{
-			pkcs11.NewAttribute(pkcs11.CKA_LABEL, *wrapKey),
-			},
-			1,
-		)
-		exitWhenError(err)
+	w, _, err := p11w.FindObjects([]*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, *wrapKey),
+		},
+		1,
+	)
+	exitWhenError(err)
 
 		if *keyType == "EC" {
 			err := p11w.UnWrapECKeyFromFile(*keyFile, *keyStore, *keyStorepass, *keyLabel, w[0])

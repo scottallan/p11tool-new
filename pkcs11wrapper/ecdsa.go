@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/big"
+	"crypto/x509/pkix"
 	//"golang.org/x/crypto/pkcs12"
 
 	//"github.com/cloudflare/cfssl/csr"
@@ -40,8 +41,19 @@ type EcdsaKey struct {
 	curveOid	asn1.RawValue
 	ephemeral	bool
 	exportable	bool
+	asnFullBytes asn1.RawValue
 
 	Req	*CSRInfo
+}
+
+// pk8 reflects an ASN.1, PKCS#8 PrivateKey. See
+// ftp://ftp.rsasecurity.com/pub/pkcs/pkcs-8/pkcs-8v1_2.asn
+// and RFC 5208.
+type pk8 struct {
+	Version    int
+	Algo       pkix.AlgorithmIdentifier
+	PrivateKey []byte
+	// optional attributes omitted.
 }
 
 type SubjectKeyIdentifier struct {
@@ -89,7 +101,25 @@ func (csp *impl) verifyECDSA(k ecdsaPublicKey, signature, digest []byte, opts bc
 
 // SKI returns the subject key identifier of this key.
 
-
+// RFC 3279, 2.3 Public Key Algorithms
+//
+// pkcs-1 OBJECT IDENTIFIER ::== { iso(1) member-body(2) us(840)
+//    rsadsi(113549) pkcs(1) 1 }
+//
+// rsaEncryption OBJECT IDENTIFIER ::== { pkcs1-1 1 }
+//
+// id-dsa OBJECT IDENTIFIER ::== { iso(1) member-body(2) us(840)
+//    x9-57(10040) x9cm(4) 1 }
+//
+// RFC 5480, 2.1.1 Unrestricted Algorithm Identifier and Parameters
+//
+// id-ecPublicKey OBJECT IDENTIFIER ::= {
+//       iso(1) member-body(2) us(840) ansi-X9-62(10045) keyType(2) 1 }
+var (
+	oidPublicKeyRSA   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 1}
+	oidPublicKeyDSA   = asn1.ObjectIdentifier{1, 2, 840, 10040, 4, 1}
+	oidPublicKeyECDSA = asn1.ObjectIdentifier{1, 2, 840, 10045, 2, 1}
+)
 
 func (k *EcdsaKey) GetCSRInfo(jsonFile string) CSRInfo {
 	raw, err := ioutil.ReadFile(jsonFile)
@@ -239,6 +269,7 @@ func (k *EcdsaKey) ImportPrivKeyFromP12(file string, password string) (err error
 
 func (k *EcdsaKey) ImportPrivKeyFromFile(file string) (err error) {
 
+
 	keyFile, err := ioutil.ReadFile(file)
 	if err != nil {
 		return
@@ -246,12 +277,38 @@ func (k *EcdsaKey) ImportPrivKeyFromFile(file string) (err error) {
 
 	keyBlock, _ := pem.Decode(keyFile)
 	key, err := x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
+	
 	if err != nil {
 		return
 	}
 
 	k.PrivKey = key.(*ecdsa.PrivateKey)
 	k.PubKey = &k.PrivKey.PublicKey
+
+	
+
+	//Built on x509/pkcs8.go
+	var privKey pk8
+	if _, err := asn1.Unmarshal(keyBlock.Bytes, &pk8); err != nil {
+		return err
+	}
+	if pk8.Algo.Algorithm.Equal(oidPublicKeyECDSA) {
+		rawBytes := privKey.Algo.Parameters.FullBytes
+		k.asnFullBytes = rawBytes
+	/*	namedCurveOID := new(asn1.ObjectIdentifier)
+		if _, err := asn1.Unmarshal(bytes, namedCurveOID); err != nil {
+			namedCurveOID = nil
+		}
+		key, err = parseECPrivateKey(namedCurveOID, privKey.PrivateKey)
+		if err != nil {
+			return nil, errors.New("x509: failed to parse EC private key embedded in PKCS#8: " + err.Error())
+		}
+		return key, nil */
+	} else {
+		err := fmt.Errorf("Unable to extract ASN1 FullBytes from PKCS8 structure")
+		return err
+	}
+	
 
 	return
 }
