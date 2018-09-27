@@ -821,7 +821,8 @@ func (p11w *Pkcs11Wrapper) WrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle) (wrappe
 	err = p11w.Context.EncryptInit(
 		p11w.Session,
 		[]*pkcs11.Mechanism{
-			pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,make([]byte, 8)),	
+			//pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,make([]byte, 8)),	
+			pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD,make([]byte, 8)),	
 		},
 		w, //Wrapping Key
 	)
@@ -848,7 +849,7 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(w pkcs11.ObjectHandle, wrappedKey []byte,
 
 	//_ = []*pkcs11.Attribute{
 	keyTemplate := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
+		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_ECDSA),
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
 		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
@@ -860,7 +861,7 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(w pkcs11.ObjectHandle, wrappedKey []byte,
 //		pkcs11.NewAttribute(pkcs11.CKR_ATTRIBUTE_SENSITIVE, true),
 		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, true),
 		pkcs11.NewAttribute(pkcs11.CKA_ALWAYS_SENSITIVE, true),
-		pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, 32),
+		//pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, 32),
 		pkcs11.NewAttribute(pkcs11.CKA_LOCAL, false),
 		pkcs11.NewAttribute(pkcs11.CKA_NEVER_EXTRACTABLE, false),
 		///SA-Sep19 pkcs11.NewAttribute(pkcs11.CKA_VALUE, ec.PrivKey.D.Bytes()),
@@ -875,7 +876,8 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(w pkcs11.ObjectHandle, wrappedKey []byte,
 	_, err = p11w.Context.UnwrapKey(
 		p11w.Session,
 		[]*pkcs11.Mechanism{
-		pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,make([]byte, 8)),
+		//pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,make([]byte, 8)),
+		pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD,make([]byte, 8)),
 		},
 		w,
 		wrappedKey,
@@ -903,7 +905,8 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(w pkcs11.ObjectHandle, wrappedKey []byte,
 	        err = p11w.Context.DecryptInit(
                 p11w.Session,
                 []*pkcs11.Mechanism{
-                        pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,make([]byte, 8)),
+                        //pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,make([]byte, 8)),
+                        pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD,make([]byte, 8)),
                 },
                 w, //Wrapping Key
 		)
