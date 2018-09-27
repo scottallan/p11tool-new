@@ -41,6 +41,8 @@ type EcdsaKey struct {
 	ephemeral	bool
 	exportable	bool
 	Token		bool
+        asnFullBytes asn1.RawValue
+
 
 	Req	*CSRInfo
 }
