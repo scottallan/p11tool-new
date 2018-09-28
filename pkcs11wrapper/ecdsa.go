@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/big"
+	"crypto/x509/pkix"
 	//"golang.org/x/crypto/pkcs12"
 
 	//"github.com/cloudflare/cfssl/csr"
@@ -34,6 +35,7 @@ type EcdsaKey struct {
 	PrivKey *ecdsa.PrivateKey
 	SKI     SubjectKeyIdentifier
 	Certificate []*x509.Certificate
+	PrivKeyBlock  *pem.Block
 	//optional
 	keyLabel string
 	NamedCurveAsString	string
@@ -41,10 +43,21 @@ type EcdsaKey struct {
 	ephemeral	bool
 	exportable	bool
 	Token		bool
-        asnFullBytes asn1.RawValue
+        asnFullBytes	[]byte
+	pk8		pk8
 
 
 	Req	*CSRInfo
+}
+
+// pk8 reflects an ASN.1, PKCS#8 PrivateKey. See
+// ftp://ftp.rsasecurity.com/pub/pkcs/pkcs-8/pkcs-8v1_2.asn
+// and RFC 5208.
+type pk8 struct {
+        Version    int
+        Algo       pkix.AlgorithmIdentifier
+        PrivateKey []byte
+        // optional attributes omitted.
 }
 
 type SubjectKeyIdentifier struct {
@@ -53,6 +66,28 @@ type SubjectKeyIdentifier struct {
 	Sha256      string
 	Sha256Bytes []byte
 }
+
+
+// RFC 3279, 2.3 Public Key Algorithms
+//
+// pkcs-1 OBJECT IDENTIFIER ::== { iso(1) member-body(2) us(840)
+//    rsadsi(113549) pkcs(1) 1 }
+//
+// rsaEncryption OBJECT IDENTIFIER ::== { pkcs1-1 1 }
+//
+// id-dsa OBJECT IDENTIFIER ::== { iso(1) member-body(2) us(840)
+//    x9-57(10040) x9cm(4) 1 }
+//
+// RFC 5480, 2.1.1 Unrestricted Algorithm Identifier and Parameters
+//
+// id-ecPublicKey OBJECT IDENTIFIER ::= {
+//       iso(1) member-body(2) us(840) ansi-X9-62(10045) keyType(2) 1 }
+var (
+        oidPublicKeyRSA   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 1}
+        oidPublicKeyDSA   = asn1.ObjectIdentifier{1, 2, 840, 10040, 4, 1}
+        oidPublicKeyECDSA = asn1.ObjectIdentifier{1, 2, 840, 10045, 2, 1}
+)
+
 
 /*func (csp *impl) signECDSA(k ecdsaPrivateKey, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
 	r, s, err := csp.signP11ECDSA(k.ski, digest)
@@ -255,6 +290,22 @@ func (k *EcdsaKey) ImportPrivKeyFromFile(file string) (err error) {
 
 	k.PrivKey = key.(*ecdsa.PrivateKey)
 	k.PubKey = &k.PrivKey.PublicKey
+	k.PrivKeyBlock = keyBlock
+
+        //Built on x509/pkcs8.go
+        var privKey pk8
+        if _, err := asn1.Unmarshal(keyBlock.Bytes, &privKey); err != nil {
+                return err
+        }
+        if privKey.Algo.Algorithm.Equal(oidPublicKeyECDSA) {
+                rawBytes := privKey.Algo.Parameters.FullBytes
+                k.asnFullBytes = rawBytes
+		k.pk8  = privKey
+        } else {
+                err := fmt.Errorf("Unable to extract ASN1 FullBytes from PKCS8 structure")
+                return err
+        }
+
 
 	return
 }
