@@ -318,6 +318,12 @@ func FindSlotByLabel(p *pkcs11.Ctx, slotLabel string) (slot uint, index int, err
 	return
 }
 
+//DeleteObj Delete Objects from PKCS11 Token
+func (p11w *Pkcs11Wrapper) DeleteObj(objClass string, keyLabel string) (err error) {
+
+	return
+}
+
 // List content of slot
 func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 
@@ -892,8 +898,7 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle, wrapp
 		// implicitly enable derive for now
 		//pkcs11.NewAttribute(pkcs11.CKA_DERIVE, true),
 	}
-	//TODO : Wrap key first ;)
-	//_, err = p11w.Context.CreateObject(p11w.Session, keyTemplate)
+
 
 
 	_, err = p11w.Context.UnwrapKey(
