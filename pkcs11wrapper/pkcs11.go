@@ -160,6 +160,7 @@ const (
 // maps used to convert object into human readable text
 var CKA_KEY_TYPE_MAP map[byte]string
 var CKA_CLASS_MAP map[uint]string
+var CKA_PKCS11_CLASS_MAP map[string]uint
 
 func init() {
 
@@ -183,6 +184,14 @@ func init() {
 		pkcs11.CKO_PRIVATE_KEY: "CKO_PRIVATE_KEY",
 		pkcs11.CKO_SECRET_KEY:  "CKO_SECRET_KEY",
 		pkcs11.CKO_DATA:        "CKO_DATA",
+	}
+
+	//Setup Class Constants for Class as String
+	CKA_PKCS11_CLASS_MAP = map[string]uint{
+		"CKO_PRIVATE_KEY":	pkcs11.CKO_PRIVATE_KEY,
+		"CKO_PUBLIC_KEY":	pkcs11.CKO_PUBLIC_KEY,
+		"CKO_SECRET_KEY":	pkcs11.CKO_SECRET_KEY,
+		"CKO_CERTIFICATE":	pkcs11.CKO_CERTIFICATE,
 	}
 }
 
@@ -320,12 +329,13 @@ func FindSlotByLabel(p *pkcs11.Ctx, slotLabel string) (slot uint, index int, err
 
 //DeleteObj Delete Objects from PKCS11 Token
 func (p11w *Pkcs11Wrapper) DeleteObj(objClass string, keyLabel string) (err error) {
-
+	var keyTemplate []*pkcs11.Attribute
 	if objClass == "ALL" {
-		keyTemplate := []*pkcs11.Attribute{}
+		keyTemplate = []*pkcs11.Attribute{}
 	} else {
+		fmt.Printf("Searching for Label: %s , ObjClass %s\n",keyLabel, objClass)
 		keyTemplate = []*pkcs11.Attribute{
-			pkc11.NewAttribute(pkcs11.CKA_CLASS, objClass),
+			pkcs11.NewAttribute(pkcs11.CKA_CLASS,  decodeP11Class(objClass)),
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, keyLabel),
 		}
 	}
@@ -340,17 +350,19 @@ func (p11w *Pkcs11Wrapper) DeleteObj(objClass string, keyLabel string) (err erro
 	}
 
 	// continue the search, get object handlers
-	p11ObjHandlers, moreThanMax, err := p11w.Context.FindObjects(p11w.Session, 1000)
+	p11ObjHandlers, _, err := p11w.Context.FindObjects(p11w.Session, 1000)
 	if err != nil {
+		fmt.Printf("Cannot Find Objects %v\n", err)
 		return
 	}
+	fmt.Printf("found %v objects\n",len(p11ObjHandlers))
 
 	// finishes the search
 	err = p11w.Context.FindObjectsFinal(p11w.Session)
 	if err != nil {
 		return
 	}
-	for i, obj := range p11ObjHandlers {
+	for _, obj := range p11ObjHandlers {
 		
 		err := p11w.Context.DestroyObject(
 			p11w.Session,
@@ -358,7 +370,7 @@ func (p11w *Pkcs11Wrapper) DeleteObj(objClass string, keyLabel string) (err erro
 		)
 		if err != nil {
 			fmt.Printf("Unable to Destroy Object : %v", err)
-			return
+			return err
 		}
 	} 
 
@@ -510,6 +522,16 @@ func DecodeCKACLASS(b byte) string {
 		return "UNKNOWN"
 	}
 
+}
+
+func decodeP11Class(s string) uint {
+
+	val, present := CKA_PKCS11_CLASS_MAP[s]
+	if present {
+		return val
+	} else {
+		return 0
+	}
 }
 
 var (

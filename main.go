@@ -81,6 +81,7 @@ func main() {
 	keyStorepass := flag.String("keyStorepass", "securekey", "Keystore Storepass")
 	csrInfo := flag.String("csrInfo", "", "json file with values for CSR Creation")
 	wrapKey := flag.String("wrapKey","wrapKey", "DES3 Wrapping Key for unwrapping key material onto Gemalto")
+	objClass := flag.String("objClass", "", "CKA_CLASS for Deleteiong of Objects")
     outF := flag.String("outFile","out.pem","output file for CSR Generation")
     maxObjectsToList := flag.Int("maxObjectsToList", 50, "Paramter to be used with -action list to specify how many objects to print")
 
