@@ -19,6 +19,8 @@ type RsaKey struct {
 	PrivKey *rsa.PrivateKey
 	SKI     SubjectKeyIdentifier
 	Certificate []*x509.Certificate
+	ephemeral	bool
+	rsaKeySize	int
 }
 
 // SKI returns the subject key identifier of this key.

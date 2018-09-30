@@ -174,7 +174,7 @@ func main() {
 	case "generate":
 		if *keyType == "RSA" {
 			rsa := pw.RsaKey{}
-			p11w.GenerateRSA(rsa)
+			_, err := p11w.GenerateRSA(rsa, *keyLen)
 		} else if *keyType == "EC" {
 			ec := pw.EcdsaKey{}
 			//TODO pass in from argument
