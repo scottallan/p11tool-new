@@ -1153,10 +1153,10 @@ return ski, nil
 }
 
 
-func (p11w *Pkcs11Wrapper) GenerateRSA(rsa RsaKey, keySize int) (err error) {
+func (p11w *Pkcs11Wrapper) GenerateRSA(rsa RsaKey, keySize int, keyLabel string) (err error) {
 
-	publabel := fmt.Sprintf("BCPUB%s", "1")
-	prvlabel := fmt.Sprintf("BCPRV%s", "1")
+	publabel := keyLabel
+	prvlabel := keyLabel
 	//TODO pass curve into function
 
 	/*REMOVE:  TODO add all templates to external file
@@ -1169,25 +1169,22 @@ func (p11w *Pkcs11Wrapper) GenerateRSA(rsa RsaKey, keySize int) (err error) {
 	pubkey_t := []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
 			pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
-			pkcs11.NewAttribute(pkcs11.CKA_TOKEN, !ec.ephemeral),
-			pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, RsaKey.rsaKeySize),
+			pkcs11.NewAttribute(pkcs11.CKA_TOKEN, !rsa.ephemeral),
+			pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, rsa.rsaKeySize),
 			pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
-			//pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, marshaledOID),
+			pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, false),
 			pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
-
-			pkcs11.NewAttribute(pkcs11.CKA_ID, publabel),
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, publabel),
 	}
 
 	prvkey_t := []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
 			pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
-			pkcs11.NewAttribute(pkcs11.CKA_TOKEN, !ec.ephemeral),
-			pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, RsaKey.rsaKeySize),
+			pkcs11.NewAttribute(pkcs11.CKA_TOKEN, !rsa.ephemeral),
+			pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, rsa.rsaKeySize),
 			pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
 			pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
-
-			pkcs11.NewAttribute(pkcs11.CKA_ID, prvlabel),
+			pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, false),
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, prvlabel),
 
 			/*REMOVE Explicit Attribute Setting
@@ -1196,14 +1193,13 @@ func (p11w *Pkcs11Wrapper) GenerateRSA(rsa RsaKey, keySize int) (err error) {
 	}
 
 
-	pub, prv, err := p11w.Context.GenerateKeyPair(p11w.Session,
+	_, _, err = p11w.Context.GenerateKeyPair(p11w.Session,
 		[]*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_KEY_PAIR_GEN, nil)},
 		pubkey_t, prvkey_t)
 
 if err != nil {
-		return nil, fmt.Errorf("P11: keypair generate failed [%s]\n", err)
+		return fmt.Errorf("P11: keypair generate failed [%s]\n", err)
 }
-fmt.Printf("\npub key raw %c\n", pub)
 
 return nil
 
