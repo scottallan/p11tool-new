@@ -72,7 +72,7 @@ func main() {
 	pkcs11Library := flag.String("lib", "", "Location of pkcs11 library")
 	slotLabel := flag.String("slot", "ForFabric", "Slot Label")
 	slotPin := flag.String("pin", "98765432", "Slot PIN")
-	action := flag.String("action", "list", "list,import,generate,generateAndImport,generateSecret,generateAES,generateDES,unwrapECWithDES3,getSKI,SignHMAC384,TestAESGCM,generateCSR,importCert,deleteObj")
+	action := flag.String("action", "list", "list,import,generate,generateAndImport,generateSecret,generateAES,generateDES,unwrapECWithDES3,wrapKeyWithDES3,getSKI,SignHMAC384,TestAESGCM,generateCSR,importCert,deleteObj")
 	keyFile := flag.String("keyFile", "/some/dir/key.pem)", "path to key you want to import or getSKI")
 	keyType := flag.String("keyType", "EC", "Type of key (EC,RSA,GENERIC_SECRET,AES,SHA256_HMAC,SHA384_HMAC,DES3)")
 	keyLen := flag.Int("keyLen", 32, "Key Length for CKK_GENERIC_SECRET (32,48,...)")
@@ -268,6 +268,20 @@ func main() {
 			err := p11w.UnWrapECKeyFromFile(*keyFile, *keyStore, *keyStorepass, *keyLabel, w[0])
 			exitWhenError(err)
 		}
+
+	case "wrapKeyWithDES3":
+		 w, _, err := p11w.FindObjects([]*pkcs11.Attribute{
+                        pkcs11.NewAttribute(pkcs11.CKA_LABEL, *wrapKey),
+                        },
+                        1,
+                )
+                exitWhenError(err)
+
+                if *keyType == "RSA" {
+                        err := p11w.WrapP11Key(*objClass, *keyLabel, w[0])
+                        exitWhenError(err)
+                }
+
 
 	case "TestAESGCM":
 		pkcs11Attr := pkcs11.NewAttribute(pkcs11.CKA_LABEL, *keyLabel)

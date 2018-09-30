@@ -1001,6 +1001,11 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle, wrapp
 
 }
 
+func (p11w *Pkcs11Wrapper) WrapP11Key(objClass string, keyLabel string, w pkcs11.ObjectHandle) (err error) {
+
+	return
+}
+
 func (p11w *Pkcs11Wrapper) ImportRSAKeyFromFile(file string, keyStore string) (err error) {
 
 	// read in key from file
