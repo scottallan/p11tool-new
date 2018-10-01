@@ -956,7 +956,7 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle, wrapp
 		pkcs11.NewAttribute(pkcs11.CKA_ID, ec.SKI.Sha256Bytes),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, ec.keyLabel),
 		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
-		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
+		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, false),
 
 		// implicitly enable derive for now
 		//pkcs11.NewAttribute(pkcs11.CKA_DERIVE, true),
@@ -1029,7 +1029,7 @@ func (p11w *Pkcs11Wrapper) WrapP11Key(objClass string, keyLabel string, w pkcs11
 	}
 	if moreThanMax {
 		fmt.Errorf("expected a Single Object... found %v exiting", len(p11ObjHandlers))
-		retrun err
+		return err
 	}
 
 	// finishes the search
@@ -1038,27 +1038,31 @@ func (p11w *Pkcs11Wrapper) WrapP11Key(objClass string, keyLabel string, w pkcs11
 		return
 	}
 	if len(p11ObjHandlers) == 1 {
-	   wrappKeyLabel, err := pkcs11.GetAttributeValue(
+	   wrappKeyLabel, err := p11w.Context.GetAttributeValue(
 		   p11w.Session,
 		   w,
-		   pkcs11.NewAttribute{
-			   pkcs11.Attribute(pkcs11.CKA_LABEL, nil),
+		   []*pkcs11.Attribute{
+		      pkcs11.NewAttribute(pkcs11.CKA_LABEL, nil),
 		   },
 	   )
 	   if err != nil {
 		   fmt.Errorf("Cant retireve label of wrapping key %v",err)
 		   return err
 	   }
-	   fmt.Printf("wrapping object %v out of hms with %v\n",p11ObjHandlers[0], wrappKeyLabel[0])
+	   fmt.Printf("wrapping object %v out of hms with %s\n",p11ObjHandlers[0], wrappKeyLabel[0].Value)
 	   _, err = p11w.Context.WrapKey(
 			p11w.Session,
-			pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD,make([]byte,8)),
+			[]*pkcs11.Mechanism{
+			  pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD,make([]byte,8)),
+			},
 			w,
-			p11Key,
+			p11ObjHandlers[0],
 	   )
 	   if err != nil {
 		   fmt.Errorf("Unable to Wrap Key %v",err)
 		   return err
+	   } else {
+		fmt.Printf("Successfully Wrapped key %v",p11ObjHandlers[0])
 	   }
 	} else {
 		fmt.Errorf("expected a single object.... exiting")
@@ -1250,7 +1254,9 @@ func (p11w *Pkcs11Wrapper) GenerateRSA(rsa RsaKey, keySize int, keyLabel string)
 			pkcs11.NewAttribute(pkcs11.CKA_TOKEN, !rsa.ephemeral),
 			pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, rsa.rsaKeySize),
 			pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
+			pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, true),
 			pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
+			//pkcs11.NewAttribute(pkcs11.CKA_WRAP, true),
 			pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, false),
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, prvlabel),
 
