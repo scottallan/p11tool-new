@@ -1003,6 +1003,68 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle, wrapp
 
 func (p11w *Pkcs11Wrapper) WrapP11Key(objClass string, keyLabel string, w pkcs11.ObjectHandle) (err error) {
 
+	var keyTemplate []*pkcs11.Attribute
+	
+	fmt.Printf("Searching for Label: %s , ObjClass %s\n",keyLabel, objClass)
+	keyTemplate = []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS,  decodeP11Class(objClass)),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, keyLabel),
+	}	
+	
+
+	// start the search for object
+	err = p11w.Context.FindObjectsInit(
+		p11w.Session,
+		keyTemplate,
+	)
+	if err != nil {
+		return err
+	}
+
+	// continue the search, get object handlers
+	p11ObjHandlers, moreThanMax, err := p11w.Context.FindObjects(p11w.Session, 1)
+	if err != nil {
+		fmt.Printf("Cannot Find Objects %v\n", err)
+		return
+	}
+	if moreThanMax {
+		fmt.Errorf("expected a Single Object... found %v exiting", len(p11ObjHandlers))
+		retrun err
+	}
+
+	// finishes the search
+	err = p11w.Context.FindObjectsFinal(p11w.Session)
+	if err != nil {
+		return
+	}
+	if len(p11ObjHandlers) == 1 {
+	   wrappKeyLabel, err := pkcs11.GetAttributeValue(
+		   p11w.Session,
+		   w,
+		   pkcs11.NewAttribute{
+			   pkcs11.Attribute(pkcs11.CKA_LABEL, nil),
+		   },
+	   )
+	   if err != nil {
+		   fmt.Errorf("Cant retireve label of wrapping key %v",err)
+		   return err
+	   }
+	   fmt.Printf("wrapping object %v out of hms with %v\n",p11ObjHandlers[0], wrappKeyLabel[0])
+	   _, err = p11w.Context.WrapKey(
+			p11w.Session,
+			pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD,make([]byte,8)),
+			w,
+			p11Key,
+	   )
+	   if err != nil {
+		   fmt.Errorf("Unable to Wrap Key %v",err)
+		   return err
+	   }
+	} else {
+		fmt.Errorf("expected a single object.... exiting")
+		return err
+	}
+
 	return
 }
 
