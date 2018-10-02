@@ -348,7 +348,7 @@ func main() {
 	case "generateDES":
 		if *keyType == "DES3" {
 			//Generate DES Key
-			_, err := p11w.CreateSymKey(*keyLabel, 24, *keyType)
+			_, err := p11w.CreateSymKey(*keyLabel, *keyLen, *keyType)
 			exitWhenError(err)
 		}
 
