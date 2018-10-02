@@ -926,7 +926,7 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle, wrapp
         ecPt = append([]byte{0x04, byte(len(ecPt))}, ecPt...)
 
         keyTemplate := []*pkcs11.Attribute{
-                pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
+                pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_ECDSA),
                 pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
                 pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
                 pkcs11.NewAttribute(pkcs11.CKA_TOKEN, ec.Token),
