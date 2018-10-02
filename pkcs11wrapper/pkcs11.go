@@ -1243,9 +1243,11 @@ func (p11w *Pkcs11Wrapper) GenerateRSA(rsa RsaKey, keySize int, keyLabel string)
 			pkcs11.NewAttribute(pkcs11.CKA_TOKEN, !rsa.ephemeral),
 			pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, rsa.rsaKeySize),
 			pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
-			pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, false),
+			pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, true),
 			pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, publabel),
+
+			pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, "10001"),
 	}
 
 	prvkey_t := []*pkcs11.Attribute{
@@ -1255,9 +1257,10 @@ func (p11w *Pkcs11Wrapper) GenerateRSA(rsa RsaKey, keySize int, keyLabel string)
 			pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, rsa.rsaKeySize),
 			pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
 			pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, true),
+			pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
 			pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
-			//pkcs11.NewAttribute(pkcs11.CKA_WRAP, true),
-			pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, false),
+			////pkcs11.NewAttribute(pkcs11.CKA_WRAP, true),
+			pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, true),
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, prvlabel),
 
 			/*REMOVE Explicit Attribute Setting
