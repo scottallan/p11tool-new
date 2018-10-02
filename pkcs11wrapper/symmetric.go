@@ -90,18 +90,30 @@ func (p11w *Pkcs11Wrapper) GetSymPkcs11Template(objectLabel string, keyLen int, 
 		}	
 		pkcs11VendorAttr = append(pkcs11VendorAttr, pkcs11KeyType...)
 	case "DES3":
+
 		pkcs11KeyType = []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_DES3),
 		}
-		pkcs11VendorAttr = []*pkcs11.Attribute{
-			pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
-			pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
-			pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, true),
-			pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, true),
-			pkcs11.NewAttribute(pkcs11.CKA_WRAP, true),
-			pkcs11.NewAttribute(pkcs11.CKA_UNWRAP, true),
-		        pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, SymKeyLength), /* KeyLength */
-		}	
+		if SymKeyLength != 0 { //CloudHSM does not set keyLen on DES3...
+			pkcs11VendorAttr = []*pkcs11.Attribute{
+				pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
+				pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
+				pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, true),
+				pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, true),
+				pkcs11.NewAttribute(pkcs11.CKA_WRAP, true),
+				pkcs11.NewAttribute(pkcs11.CKA_UNWRAP, true),
+				pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, SymKeyLength), /* KeyLength */
+			}
+		} else {
+			pkcs11VendorAttr = []*pkcs11.Attribute{
+				pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
+				pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
+				pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, true),
+				pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, true),
+				pkcs11.NewAttribute(pkcs11.CKA_WRAP, true),
+				pkcs11.NewAttribute(pkcs11.CKA_UNWRAP, true),				
+			}	
+		}
 		pkcs11VendorAttr = append(pkcs11VendorAttr, pkcs11KeyType...)
 	case "GENERIC_SECRET":
 		pkcs11KeyType = []*pkcs11.Attribute{
