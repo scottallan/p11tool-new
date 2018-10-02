@@ -420,7 +420,8 @@ func (p11w *Pkcs11Wrapper) ListObjects(template []*pkcs11.Attribute, max int) {
 				)
 
 				if err != nil {
-					panic(err)
+					ckaValueLen = []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, 0)}
+					//panic(err)
 				}
 
 			} else {
