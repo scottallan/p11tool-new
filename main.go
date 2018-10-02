@@ -278,8 +278,21 @@ func main() {
                 exitWhenError(err)
 
                 if *keyType == "RSA" {
-                        err := p11w.WrapP11Key(*objClass, *keyLabel, w[0])
+                        wrappedKey, err := p11w.WrapP11Key(*objClass, *keyLabel, w[0])
                         exitWhenError(err)
+			decryptedKey, err := p11w.DecryptP11Key(wrappedKey, w[0])
+			outFile, err := os.Create(*outF)
+                        if err != nil {
+                                fmt.Printf("Unable to write key %s", err.Error())
+                                return
+                        }
+                        defer outFile.Close()
+                        fmt.Printf("writing key to %s\n", *outF)
+                        err = ioutil.WriteFile(*outF,decryptedKey,0644)
+                        if err != nil {
+                                return
+                        }
+
                 }
 
 

@@ -1001,16 +1001,14 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle, wrapp
 
 }
 
-func (p11w *Pkcs11Wrapper) WrapP11Key(objClass string, keyLabel string, w pkcs11.ObjectHandle) (err error) {
+func (p11w *Pkcs11Wrapper) WrapP11Key(objClass string, keyLabel string, w pkcs11.ObjectHandle) (wrappedKey []byte, err error) {
 
 	var keyTemplate []*pkcs11.Attribute
-	
 	fmt.Printf("Searching for Label: %s , ObjClass %s\n",keyLabel, objClass)
 	keyTemplate = []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS,  decodeP11Class(objClass)),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, keyLabel),
 	}	
-	
 
 	// start the search for object
 	err = p11w.Context.FindObjectsInit(
@@ -1018,24 +1016,22 @@ func (p11w *Pkcs11Wrapper) WrapP11Key(objClass string, keyLabel string, w pkcs11
 		keyTemplate,
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
 	// continue the search, get object handlers
 	p11ObjHandlers, moreThanMax, err := p11w.Context.FindObjects(p11w.Session, 1)
 	if err != nil {
 		fmt.Printf("Cannot Find Objects %v\n", err)
-		return
+		return nil, err
 	}
 	if moreThanMax {
 		fmt.Errorf("expected a Single Object... found %v exiting", len(p11ObjHandlers))
-		return err
+		return nil, err
 	}
-
 	// finishes the search
 	err = p11w.Context.FindObjectsFinal(p11w.Session)
 	if err != nil {
-		return
+		return nil, err
 	}
 	if len(p11ObjHandlers) == 1 {
 	   wrappKeyLabel, err := p11w.Context.GetAttributeValue(
@@ -1047,10 +1043,10 @@ func (p11w *Pkcs11Wrapper) WrapP11Key(objClass string, keyLabel string, w pkcs11
 	   )
 	   if err != nil {
 		   fmt.Errorf("Cant retireve label of wrapping key %v",err)
-		   return err
+		   return nil, err
 	   }
 	   fmt.Printf("wrapping object %v out of hms with %s\n",p11ObjHandlers[0], wrappKeyLabel[0].Value)
-	   _, err = p11w.Context.WrapKey(
+	   wrappedKey, err = p11w.Context.WrapKey(
 			p11w.Session,
 			[]*pkcs11.Mechanism{
 			  pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD,make([]byte,8)),
@@ -1060,14 +1056,39 @@ func (p11w *Pkcs11Wrapper) WrapP11Key(objClass string, keyLabel string, w pkcs11
 	   )
 	   if err != nil {
 		   fmt.Errorf("Unable to Wrap Key %v",err)
-		   return err
+		   return nil, err
 	   } else {
 		fmt.Printf("Successfully Wrapped key %v",p11ObjHandlers[0])
 	   }
 	} else {
 		fmt.Errorf("expected a single object.... exiting")
-		return err
+		return nil, err
 	}
+	return
+}
+
+func (p11w *Pkcs11Wrapper) DecryptP11Key(wrappedKey []byte, w pkcs11.ObjectHandle) (decryptedKey []byte, err error) {
+
+	err = p11w.Context.DecryptInit(
+                p11w.Session,
+                []*pkcs11.Mechanism{
+                        pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD,make([]byte, 8)),
+                },
+                w, //Wrapping Key
+        )
+        if err != nil {
+       	        fmt.Printf("Unable to Initialise Encryptor %v with key %v", err, w)
+                return nil,  err
+        }
+        decryptedKey, err = p11w.Context.Decrypt(
+                p11w.Session,
+                wrappedKey,
+        )
+	if err != nil {
+		fmt.Printf("Unable to Decrypt Key to byte %v\n", err)
+		return nil, err
+	}
+        fmt.Printf("DECRYPTED VALUE: %v \n",decryptedKey)
 
 	return
 }
