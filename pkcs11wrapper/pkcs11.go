@@ -957,7 +957,7 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle, wrapp
 		pkcs11.NewAttribute(pkcs11.CKA_ID, ec.SKI.Sha256Bytes),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, ec.keyLabel),
 		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
-		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, false),
+		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
 
 		// implicitly enable derive for now
 		//pkcs11.NewAttribute(pkcs11.CKA_DERIVE, true),
