@@ -812,7 +812,7 @@ func (p11w *Pkcs11Wrapper) ImportECKeyFromFile(file string, keyStore string, key
 }
 
 //UnWrapECKeyFromFile takes a EC Key from file imput and unwraps onto an HSM
-func (p11w *Pkcs11Wrapper) UnWrapECKeyFromFile(file string, keyStore string, keyStorepass string, keyLabel string, w pkcs11.ObjectHandle) (err error) {
+func (p11w *Pkcs11Wrapper) UnWrapECKeyFromFile(file string, keyStore string, keyStorepass string, keyLabel string, w pkcs11.ObjectHandle, wrapKeyType string) (err error) {
 // read in key from file
 	//ec := EcdsaKey{}
 	var ec EcdsaKey
@@ -837,13 +837,13 @@ func (p11w *Pkcs11Wrapper) UnWrapECKeyFromFile(file string, keyStore string, key
 
 	ec.Token = true
 
-	wrappedKey, err := p11w.WrapECKey(ec, w)
+	wrappedKey, err := p11w.WrapECKey(ec, w, wrapKeyType)
 	if err != nil {
 		fmt.Printf("Unable to WRAP EC Key %v with error %v", ec.PrivKey.D.Bytes(), err)
 		return err
 	}
 	marshaledOID, err := GetECParamMarshaled(ec.PrivKey.Params().Name)
-	err = p11w.UnwrapECKey(ec, w, wrappedKey, keyLabel, marshaledOID)
+	err = p11w.UnwrapECKey(ec, w, wrappedKey, keyLabel, marshaledOID, wrapKeyType)
 	if err != nil {
 		fmt.Printf("Unable to UnWRAP EC Key")
 		return err
@@ -859,7 +859,7 @@ func (p11w *Pkcs11Wrapper) UnWrapECKeyFromFile(file string, keyStore string, key
 }
 
 //WrapECKey Wraps an EC Key
-func (p11w *Pkcs11Wrapper) WrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle) (wrappedKey []byte, err error) {
+func (p11w *Pkcs11Wrapper) WrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle, wrapKeyType string) (wrappedKey []byte, err error) {
 	if ec.PrivKey == nil {
 		err = errors.New("no key to WRAP")
 		return
@@ -887,6 +887,8 @@ func (p11w *Pkcs11Wrapper) WrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle) (wrappe
 		return
 	}
 	*/
+	if wrapKeyType == "DES3" {
+	fmt.Printf("Wrapping with DES3\n")
 	err = p11w.Context.EncryptInit(
 		p11w.Session,
 		[]*pkcs11.Mechanism{
@@ -898,6 +900,21 @@ func (p11w *Pkcs11Wrapper) WrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle) (wrappe
 		if err != nil {
 		fmt.Printf("Unable to Initialise Encryptor %v with key %v", err, w)
 		return nil, err
+		}
+	} else {
+	fmt.Printf("Wrapping with AES\n")
+	 err = p11w.Context.EncryptInit(
+                p11w.Session,
+                []*pkcs11.Mechanism{
+                        //pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,make([]byte, 8)),
+                        pkcs11.NewMechanism(pkcs11.CKM_AES_CBC_PAD,make([]byte, 16)),
+                },
+                w, //Wrapping Key
+        )
+                if err != nil {
+                fmt.Printf("Unable to Initialise Encryptor %v with key %v", err, w)
+                return nil, err
+                }
 	}
 	wrappedKey, err = p11w.Context.Encrypt(
 		p11w.Session,
@@ -915,7 +932,7 @@ func (p11w *Pkcs11Wrapper) WrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle) (wrappe
 }
 
 //UnwrapECKeye EC Key Wrapped with DES3 Key
-func (p11w *Pkcs11Wrapper) UnwrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle, wrappedKey []byte, keyLabel string, marshaledOID []byte) (err error) {
+func (p11w *Pkcs11Wrapper) UnwrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle, wrappedKey []byte, keyLabel string, marshaledOID []byte, wrapKeyType string) (err error) {
 
 
         ec.GenSKI()
@@ -928,7 +945,7 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle, wrapp
         keyTemplate := []*pkcs11.Attribute{
                 pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_ECDSA),
                 pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
-                pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
+                //pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
                 pkcs11.NewAttribute(pkcs11.CKA_TOKEN, ec.Token),
                 pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
                 pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, marshaledOID),
@@ -964,7 +981,7 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle, wrapp
 	}
 
 
-
+	if wrapKeyType == "DES3" {
 	_, err = p11w.Context.UnwrapKey(
 		p11w.Session,
 		[]*pkcs11.Mechanism{
@@ -997,6 +1014,25 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle, wrapp
 		return err
 	} else {
 		fmt.Printf("Private Key Object was imported with CKA_LABEL:%x\n", ec.SKI.Sha256Bytes)
+	}
+	} else {
+	fmt.Printf("UnWrapping with AES\n")
+	 _, err = p11w.Context.UnwrapKey(
+                p11w.Session,
+                []*pkcs11.Mechanism{
+                //pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,make([]byte, 8)),
+                //pkcs11.NewMechanism(pkcs11.CKM_AES_CBC_PAD, make([]byte, 8)),
+                pkcs11.NewMechanism(pkcs11.CKM_AES_KEY_WRAP, nil),
+                },
+                w,
+                wrappedKey,
+                keyTemplate,
+        )
+
+        if err != nil {
+                fmt.Printf("Object FAILED TO IMPORT with CKA_LABEL:%s\n ERROR %s\n wrapping key: %v\n DECRYPTING VALUE \n", keyLabel, err, w)
+		return err
+	}
 	}
 	return
 
@@ -1210,8 +1246,8 @@ ski = hash[:]
 
 // set CKA_ID of the both keys to SKI(public key) and CKA_LABEL to hex string of SKI
 setski_t := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_ID, ski),
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, hex.EncodeToString(ski)),
+                pkcs11.NewAttribute(pkcs11.CKA_ID, ski),
+                pkcs11.NewAttribute(pkcs11.CKA_LABEL, hex.EncodeToString(ski)),
 }
 
 fmt.Printf("Generated new P11 key, SKI %x\n", ski)
@@ -1244,6 +1280,30 @@ fmt.Printf("pubGoKey %c\n", pubGoKey.X)
 
 return ski, nil
 }
+
+//SetECSki Created to modify SKI on CKA_ID for CloudHSM.  FAILED AS SETATTRIBUTE NOT Supported.  Will scrap this code later
+func (p11w *Pkcs11Wrapper) SetECSKI(ec EcdsaKey) (err error) {
+
+prvPtr, err := p11w.findKeyPairFromLabel(ec.SKI.Sha256, true)
+	if err != nil {
+		fmt.Printf("could not find key with label %c and byte value %c \n", ec.SKI.Sha256, ec.SKI.Sha256Bytes)
+	}
+
+prv := *prvPtr
+// set CKA_ID of the both keys to SKI(public key) and CKA_LABEL to hex string of SKI
+setski_t := []*pkcs11.Attribute{
+                pkcs11.NewAttribute(pkcs11.CKA_ID, ec.SKI.Sha256Bytes),
+}
+
+err = p11w.Context.SetAttributeValue(p11w.Session, prv, setski_t)
+if err != nil {
+                return fmt.Errorf("P11: set-ID-to-SKI[private] failed [%s]\n", err)
+}
+
+
+return
+
+} 
 
 
 func (p11w *Pkcs11Wrapper) GenerateRSA(rsa RsaKey, keySize int, keyLabel string) (err error) {
@@ -1328,6 +1388,36 @@ func (p11w *Pkcs11Wrapper) findKeyPairFromSKI(ski []byte, keyType bool) (*pkcs11
 
 	if len(objs) == 0 {
 		return nil, fmt.Errorf("Key not found [%s]", hex.Dump(ski))
+	}
+
+	return &objs[0], nil
+}
+
+func (p11w *Pkcs11Wrapper) findKeyPairFromLabel(ski string, keyType bool) (*pkcs11.ObjectHandle, error) {
+	ktype := pkcs11.CKO_PUBLIC_KEY
+	if keyType == privateKeyFlag {
+		ktype = pkcs11.CKO_PRIVATE_KEY
+	}
+
+	template := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, ktype),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, ski),
+	}
+	if err := p11w.Context.FindObjectsInit(p11w.Session, template); err != nil {
+		return nil, err
+	}
+
+	// single session instance, assume one hit only
+	objs, _, err := p11w.Context.FindObjects(p11w.Session, 1)
+	if err != nil {
+		return nil, err
+	}
+	if err = p11w.Context.FindObjectsFinal(p11w.Session); err != nil {
+		return nil, err
+	}
+
+	if len(objs) == 0 {
+		return nil, fmt.Errorf("Key not found [%s]", ski)
 	}
 
 	return &objs[0], nil
