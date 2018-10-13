@@ -4,17 +4,24 @@ import (
 	"github.com/miekg/pkcs11"
 	"os"
 	"strconv"
+	"math/big"
 	"bytes"
 )
 
 //ImportSymKey allows the importing of Symmetric Keys
 func (p11w *Pkcs11Wrapper) ImportSymKey(keyType string, key string, keyStore string, keyStorePass string, keyLabel string) (err error) {
 
+n := new(big.Int)
+    n, ok := n.SetString(key, 16)
+    if !ok {
+        ExitWithMessage("BigInt SetString:", nil)
+    }
+
 getAttr := p11w.GetSymPkcs11Template(keyLabel, len(key), keyType)
 pkcs11KeyValue := []*pkcs11.Attribute{
-	pkcs11.NewAttribute(pkcs11.CKA_VALUE, key),
+	pkcs11.NewAttribute(pkcs11.CKA_VALUE, n.Bytes()),
 	pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
-	pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY)
+	pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
 }
 getAttr = append(getAttr, pkcs11KeyValue...)
 _, err = p11w.Context.CreateObject(
