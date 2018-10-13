@@ -13,6 +13,8 @@ func (p11w *Pkcs11Wrapper) ImportSymKey(keyType string, key string, keyStore str
 getAttr := p11w.GetSymPkcs11Template(keyLabel, len(key), keyType)
 pkcs11KeyValue := []*pkcs11.Attribute{
 	pkcs11.NewAttribute(pkcs11.CKA_VALUE, key),
+	pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
+	pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY)
 }
 getAttr = append(getAttr, pkcs11KeyValue...)
 _, err = p11w.Context.CreateObject(
