@@ -79,6 +79,7 @@ func main() {
 	keyLabel := flag.String("keyLabel", "tmpkey", "Label of CKK_GENERIC_SECRET")
 	keyStore := flag.String("keyStore", "file", "Keystore Type (file,pkcs12)")
 	keyStorepass := flag.String("keyStorepass", "securekey", "Keystore Storepass")
+	key := flag.String("key", "", "Key as HEX String")
 	csrInfo := flag.String("csrInfo", "", "json file with values for CSR Creation")
 	wrapKey := flag.String("wrapKey","wrapKey", "DES3 Wrapping Key for unwrapping key material onto Gemalto")
 	objClass := flag.String("objClass", "", "CKA_CLASS for Deleteiong of Objects")
@@ -153,6 +154,12 @@ func main() {
 	case "import":
 		if *keyType == "RSA" {
 			err = p11w.ImportRSAKeyFromFile(*keyFile, *keyStore)
+			exitWhenError(err)
+		} else if *keyType == "AES" || 
+			*keyType =="GENERIC_SECRET" || 
+			*keyType == "SHA256_HMAC" || 
+			*keyType == "SHA384_HMAC" {
+			err = p11w.ImportSymKey(*keyType, *key, *keyStore, *keyStorepass, *keyLabel)
 			exitWhenError(err)
 		} else {
 			err = p11w.ImportECKeyFromFile(*keyFile, *keyStore, *keyStorepass, *keyLabel)
