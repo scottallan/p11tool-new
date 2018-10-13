@@ -10,9 +10,9 @@ import (
 //ImportSymKey allows the importing of Symmetric Keys
 func (p11w *Pkcs11Wrapper) ImportSymKey(keyType string, key string, keyStore string, keyStorePass string, keyLabel string) (err error) {
 
-getAttr := p11w.GetSymPkcs11Template(keyLabel, nil, keyType)
+getAttr := p11w.GetSymPkcs11Template(keyLabel, len(key), keyType)
 pkcs11KeyValue := []*pkcs11.Attribute{
-	p11w.Context.NewAttribute(pkcs11.CKA_VALUE, key),
+	pkcs11.NewAttribute(pkcs11.CKA_VALUE, key),
 }
 getAttr = append(getAttr, pkcs11KeyValue...)
 _, err = p11w.Context.CreateObject(
