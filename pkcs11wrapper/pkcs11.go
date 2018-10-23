@@ -1250,11 +1250,17 @@ func (p11w *Pkcs11Wrapper) GenerateRSA(rsa RsaKey, keySize int, keyLabel string)
 
 	publabel := keyLabel
 	prvlabel := keyLabel
+	n := new(big.Int)
+    	n, ok := n.SetString("10001", 10)
+    if !ok {
+        ExitWithMessage("BigInt SetString:", nil)
+    }
 	//TODO pass curve into function
 
 	/*REMOVE:  TODO add all templates to external file
 	ec.exportable = true
 	*/
+	fmt.Printf("exponent set to %v\n",n)
 	rsa.ephemeral = false
 	rsa.rsaKeySize = keySize
 	
@@ -1269,7 +1275,7 @@ func (p11w *Pkcs11Wrapper) GenerateRSA(rsa RsaKey, keySize int, keyLabel string)
 			pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, publabel),
 
-			pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, "10001"),
+			pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, n.Bytes()),
 	}
 
 	prvkey_t := []*pkcs11.Attribute{
