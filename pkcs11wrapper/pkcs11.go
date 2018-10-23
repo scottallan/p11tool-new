@@ -1251,7 +1251,7 @@ func (p11w *Pkcs11Wrapper) GenerateRSA(rsa RsaKey, keySize int, keyLabel string)
 	publabel := keyLabel
 	prvlabel := keyLabel
 	n := new(big.Int)
-    	n, ok := n.SetString("10001", 10)
+    	n, ok := n.SetString("10001", 16)
     if !ok {
         ExitWithMessage("BigInt SetString:", nil)
     }
