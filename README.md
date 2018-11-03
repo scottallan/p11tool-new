@@ -1,48 +1,68 @@
 # p11tool-new
 
-   ## PKCS11 Tool to Create Keys
+## PKCS11 Tool to Create Keys
+
+### Building Tool
+
 ```
-#build Tool
+go get github.com/scottallan/p11tool-new
 
+# OR
 
+cd $GOPATH
+mkdir -p src/github.com/scottallan
+cd src/github.com/scottallan
+git clone https://github.com/scottallan/p11tool-new.git
+cd p11tool-new
 go build -o p11tool-new
 
-#Help
 ```
+
+### Help
 ```
-./p11too-new -help
+./p11tool-new -help
+Usage of p11tool-new:
   -action string
-    	list,import,generate,generateAndImport,generateSecret,getSKI,SignHMAC384,generateCSR,importCert (default "list")
+       list,import,generate,generateAndImport,generateSecret,generateAES,generateDES,unwrapECWithDES3,wrapKeyWithDES3,getSKI,SignHMAC384,TestAESGCM,generateCSR,importCert,deleteObj (default "list")
   -allow_verification_with_non_compliant_keys
-    	Allow a SignatureVerifier to use keys which are technically non-compliant with RFC6962.
+       Allow a SignatureVerifier to use keys which are technically non-compliant with RFC6962.
   -csrInfo string
-    	json file with values for CSR Creation
+       json file with values for CSR Creation
+  -key string
+       Key as HEX String
   -keyFile string
-    	path to key you want to import or getSKI (default "/some/dir/key.pem")
+       path to key you want to import or getSKI (default "/some/dir/key.pem)")
   -keyLabel string
-    	Label of CKK_GENERIC_SECRET (default "tmpkey")
+       Label of CKK_GENERIC_SECRET (default "tmpkey")
   -keyLen int
-    	Key Length for CKK_GENERIC_SECRET (32,48,...) (default 32)
+       Key Length for CKK_GENERIC_SECRET (32,48,...) (default 32)
   -keyStore string
-    	Keystore Type (file,pkcs12) (default "file")
+       Keystore Type (file,pkcs12) (default "file")
   -keyStorepass string
-    	Keystore Storepass (default "securekey")
+       Keystore Storepass (default "securekey")
   -keyType string
-    	Type of key (EC,RSA,GENERIC_SECRET,AES) (default "EC")
+       Type of key (EC,RSA,GENERIC_SECRET,AES,SHA256_HMAC,SHA384_HMAC,DES3) (default "EC")
   -lib string
     	Location of pkcs11 library
-  -pin string
-    	Slot PIN (default "98765432")
-  -slot string
-    	Slot Label (default "ForFabric")
+  -maxObjectsToList int
+       Paramter to be used with -action list to specify how many objects to print (default 50)
+  -objClass string
+       CKA_CLASS for Deletion of Objects
   -outFile string
-      output file for CSR Generation (default ./out.pem)
+       output file for CSR Generation (default "out.pem")
+  -pin string
+       Slot PIN (default "98765432")
+  -slot string
+       Slot Label (default "ForFabric")
+  -wrapKey string
+       DES3 Wrapping Key for unwrapping key material onto Gemalto (default "wrapKey")
 ```
+
+### Generating Secret
+Generate CKK_GENERIC_SECRET of 384 bit Length example
 ```
-#Generate CKK_GENERIC_SECRET of 384 bit Length example
  ./p11tool-new -action generateSecret -keyLabel scott -keyLen 48 -keyType GENERIC_SECRET -lib /usr/safenet/lunaclient/lib/libCryptoki2_64.so -slot slot -pin 1234
-```
-```
+
 PKCS11 provider found specified slot label: myvmeslot (slot: 0, index: 0)
 Successfully tested CKM_SHA384_HMAC on key with label: scott
  HMAC 61d7474f05a421c968c67940ec49e7710bae9771c78039ee8a466b6e8789dfeccec6ffec880d20630299a9ffd2dfb30d
@@ -53,15 +73,15 @@ Successfully tested CKM_SHA384_HMAC on key with label: scott
 +-------+----------------+-----------+--------+--------------------+--------------------+
 Total objects found (max 50): 1
 ```
+
+### Generating EC Key Pair
+Generate CKK_EC key pair of NIST Curve p-256
 ```
-#Generate CKK_EC key pair of NIST Curve p-256
 ./p11tool-new -action generate -keyType EC  -slot slot -pin 1234 -lib  /usr/safenet/lunaclient/lib/libCryptoki2_64.so 
 ```
+View the newly created Key and note the CKA_ID for the keys.  The Public and Private key will have the same CKA_ID.
 ```
-#View the newly created Key and note the CKA_ID for the keys.  The Public and Private key will have the same CKA_ID.
 ./p11tool-new -action list -slot slot -pin 1234 -lib /usr/safenet/lunaclient/lib/libCryptoki2_64.so
-```
-```
 PKCS11 provider found specified slot label: myvmeslot (slot: 498477766, index: 0)
 +-------+-----------------+------------------------------------------------------------------+------------------------------------------------------------------+--------------+-------------+-------------+------------+
 | COUNT |    CKA CLASS    |                            CKA LABEL                             |                              CKA ID                              | CKA KEY TYPE | CKA KEY LEN | CKA SUBJECT | CKA ISSUER |
@@ -70,8 +90,23 @@ PKCS11 provider found specified slot label: myvmeslot (slot: 498477766, index: 0
 |   002 | CKO_PRIVATE_KEY | bfab4fe413c945ade535fe6c85d6a3b61a2c0b83c0671c1c24066ce1cad12827 | bfab4fe413c945ade535fe6c85d6a3b61a2c0b83c0671c1c24066ce1cad12827 | CKK_ECDSA    |           0 |             |            |
 +-------+-----------------+------------------------------------------------------------------+------------------------------------------------------------------+--------------+-------------+-------------+------------+
 ```
+
+### Deleting Keys
+The tool provides functionality to delete particular key by label or all keys within a particular slot.
+
+Deleting Private Key with label tmpkey
 ```
-#Generate CSR for new keys
+p11tool-new  -slot slot -pin 1234 -lib /usr/safenet/lunaclient/lib/libCryptoki2_64.so  -action deleteObj -keyLabel tmpkey -objClass CKO_PRIVATE_KEY
+```
+
+Deleting all keys in a slot
+```
+p11tool-new -slot slot -pin 1234 -lib  /usr/safenet/lunaclient/lib/libCryptoki2_64.so -action deleteObj -objClass ALL
+```
+
+### Creating CSR & Importing Signed Cert
+Generate CSR for new keys
+```
 - You need to modify the contrib/consolidated.json file to provide the correct CSR Information for you cert.
 
 the file by default provides:
@@ -90,24 +125,25 @@ the file by default provides:
 ```
 You will need to modify the CN (Common Name) and also modify the the dName fields (names) as appropriate for your org.
 the hosts entries are the SANs (Subject Alternative Names) for the cert.  You can leave this blank if you wish.
-```
-You will need the CKA_ID from the Generate command.  In the example this is given as the value bfab4fe413c945ade535fe6c85d6a3b61a2c0b83c0671c1c24066ce1cad12827
+
+
+You will need the CKA_ID from the Generate command.  In the example this is given as the value `bfab4fe413c945ade535fe6c85d6a3b61a2c0b83c0671c1c24066ce1cad12827`
 Once you have modifed the json file you can generate the CSR with the following command:
 
-./p11too-new -action generateCSR -csrInfo contrib/consolidated.json -keyType EC  -keyLabel bfab4fe413c945ade535fe6c85d6a3b61a2c0b83c0671c1c24066ce1cad12827 -slot slot -pin 1234 -lib /usr/safenet/lunaclient/lib/libCryptoki2_64.so -keyFile out.pem
-
-This will output a CSR request into your working directory call out.pem.
+```
+./p11tool-new -action generateCSR -csrInfo contrib/consolidated.json -keyType EC  -keyLabel bfab4fe413c945ade535fe6c85d6a3b61a2c0b83c0671c1c24066ce1cad12827 -slot slot -pin 1234 -lib /usr/safenet/lunaclient/lib/libCryptoki2_64.so -keyFile out.pem
+```
+This will output a CSR request into your working directory call `out.pem`.
 
 you can validate this CSR with openssl using the following syntax:
-
-openss req -in out.pem -text
-
+```
+openssl req -in out.pem -text
+```
 Once you confirm that you have generated a valid CSR with the correct dname and common name you can then submit to a certificate authority to retreive a Certificate.
-```
-```
-#Importing the Certificate chain produced for the CSR by a CA
-Once you recieve the Certificate bundle you should prepare a single PEM with the chain of certificates.  An example would be as below where the top entry is the Cert and the second entry the CA.  If there was an intermediate CA you would have more entries such as CERT -> Intermediate -> Root CA:
 
+Importing the Certificate chain produced for the CSR by a CA
+Once you recieve the Certificate bundle you should prepare a single PEM with the chain of certificates.  An example would be as below where the top entry is the Cert and the second entry the CA.  If there was an intermediate CA you would have more entries such as CERT -> Intermediate -> Root CA:
+```
 -----BEGIN CERTIFICATE-----
 MIIDhTCCAW0CCQCFynHcBdbLSDANBgkqhkiG9w0BAQsFADBZMQswCQYDVQQGEwJD
 QTEQMA4GA1UECAwHT05UQVJJTzEQMA4GA1UEBwwHVE9ST05UTzEMMAoGA1UECgwD
@@ -163,11 +199,12 @@ gpxYw8z2HMFeW7DO8vN4GB5WLAU3tNm8sg==
 -----END CERTIFICATE-----
 ```
 Once you have the pem created you can import as follows:
-
+```
 ./p11tool-new -action importCert -keyFile bundle.pem -keyLabel 28cea9ea528e85f74b734b2d74ab462570af6dfb6e91104c1ad58c348fc4c70c -keyType EC -lib /usr/safenet/lunaclient/lib/libCryptoki2_64.so -slot myvmeslot -pin 1234
 
 ```
 A further listing on the slot should show you the Keys and the Certs in the HSM:
+```
 ./p11tool-new -action list -slot slot -pin 1234 -lib /usr/safenet/lunaclient/lib/libCryptoki2_64.so
 
 PKCS11 provider found specified slot label: myvmeslot (slot: 0, index: 0)
@@ -179,3 +216,4 @@ PKCS11 provider found specified slot label: myvmeslot (slot: 0, index: 0)
 |   003 | CKO_PUBLIC_KEY  | 28cea9ea528e85f74b734b2d74ab462570af6dfb6e91104c1ad58c348fc4c70c | 28cea9ea528e85f74b734b2d74ab462570af6dfb6e91104c1ad58c348fc4c70c | CKK_ECDSA    |           0 |             |            |
 |   004 | CKO_PRIVATE_KEY | 28cea9ea528e85f74b734b2d74ab462570af6dfb6e91104c1ad58c348fc4c70c | 28cea9ea528e85f74b734b2d74ab462570af6dfb6e91104c1ad58c348fc4c70c | CKK_ECDSA    |           0 |             |            |
 +-------+-----------------+------------------------------------------------------------------+------------------------------------------------------------------+--------------+-------------+-------------+------------+
+```
