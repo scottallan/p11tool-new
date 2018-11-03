@@ -104,7 +104,7 @@ Deleting all keys in a slot
 p11tool-new -slot slot -pin 1234 -lib  /usr/safenet/lunaclient/lib/libCryptoki2_64.so -action deleteObj -objClass ALL
 ```
 
-### Creating CSR & Importing Signed Cert
+### Generating CSR & Importing Signed Cert
 Generate CSR for new keys
 ```
 - You need to modify the contrib/consolidated.json file to provide the correct CSR Information for you cert.
