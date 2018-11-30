@@ -91,19 +91,6 @@ PKCS11 provider found specified slot label: myvmeslot (slot: 498477766, index: 0
 +-------+-----------------+------------------------------------------------------------------+------------------------------------------------------------------+--------------+-------------+-------------+------------+
 ```
 
-### Deleting Keys
-The tool provides functionality to delete particular key by label or all keys within a particular slot.
-
-Deleting Private Key with label tmpkey
-```
-p11tool-new  -slot slot -pin 1234 -lib /usr/safenet/lunaclient/lib/libCryptoki2_64.so  -action deleteObj -keyLabel tmpkey -objClass CKO_PRIVATE_KEY
-```
-
-Deleting all keys in a slot
-```
-p11tool-new -slot slot -pin 1234 -lib  /usr/safenet/lunaclient/lib/libCryptoki2_64.so -action deleteObj -objClass ALL
-```
-
 ### Generating CSR & Importing Signed Cert
 Generate CSR for new keys
 ```
@@ -216,4 +203,22 @@ PKCS11 provider found specified slot label: myvmeslot (slot: 0, index: 0)
 |   003 | CKO_PUBLIC_KEY  | 28cea9ea528e85f74b734b2d74ab462570af6dfb6e91104c1ad58c348fc4c70c | 28cea9ea528e85f74b734b2d74ab462570af6dfb6e91104c1ad58c348fc4c70c | CKK_ECDSA    |           0 |             |            |
 |   004 | CKO_PRIVATE_KEY | 28cea9ea528e85f74b734b2d74ab462570af6dfb6e91104c1ad58c348fc4c70c | 28cea9ea528e85f74b734b2d74ab462570af6dfb6e91104c1ad58c348fc4c70c | CKK_ECDSA    |           0 |             |            |
 +-------+-----------------+------------------------------------------------------------------+------------------------------------------------------------------+--------------+-------------+-------------+------------+
+```
+
+### Deleting Keys
+The tool provides functionality to delete particular key by label or all keys within a particular slot.
+
+Deleting Private Key with label tmpkey
+
+```text
+
+p11tool-new  -slot slot -pin 1234 -lib /usr/safenet/lunaclient/lib/libCryptoki2_64.so  -action deleteObj -keyLabel tmpkey -objClass CKO_PRIVATE_KEY
+```
+
+Deleting all keys in a slot
+
+```text
+
+p11tool-new -slot slot -pin 1234 -lib  /usr/safenet/lunaclient/lib/libCryptoki2_64.so -action deleteObj -objClass ALL
+
 ```
