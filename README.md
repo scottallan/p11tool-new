@@ -256,9 +256,13 @@ to wrap key material out of the HSM:
 p11tool-new --action  wrapKeyWithDES3 -slot <slot> -pin <pin> -lib /opt/nfast/toolkits/pkcs11/libcknfast.so -keyLabel <keyLabel> -objClass CKO_PRIVATE_KEY -wrapKey <wrappingKeyLabel> -keyType RSA -outFile <outFileName>
 
 by default the private key will now be in the outFileName in decrypted format.
-To have the key in its encrypted form in the outFileName use the -noDec true flag
+To have the key in its encrypted form in the outFileName use the -noDec true flag:
 
 p11tool-new --action  wrapKeyWithDES3 -slot <slot> -pin <pin> -lib /opt/nfast/toolkits/pkcs11/libcknfast.so -keyLabel <keyLabel> -objClass CKO_PRIVATE_KEY -wrapKey <wrappingKeyLabel> -keyType RSA -noDec true -outFile <outFileName>
+
+Note by default the passed in keyLable is used to find the key from the CKA_LABEL attribute.  If you need to seach by the CKA_ID attribute you can pass in the -byCKAID flag:
+
+p11tool-new --action  wrapKeyWithDES3 -slot <slot> -pin <pin> -lib /opt/nfast/toolkits/pkcs11/libcknfast.so -keyLabel <keyLabel> -objClass CKO_PRIVATE_KEY -wrapKey <wrappingKeyLabel> -keyType RSA -noDec true -outFile <outFileName> -byCKAID
 
 
 ```
