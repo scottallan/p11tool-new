@@ -1002,14 +1002,26 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle, wrapp
 
 }
 
-func (p11w *Pkcs11Wrapper) WrapP11Key(objClass string, keyLabel string, w pkcs11.ObjectHandle) (wrappedKey []byte, err error) {
+func (p11w *Pkcs11Wrapper) WrapP11Key(objClass string, keyLabel string, w pkcs11.ObjectHandle, keyByID bool) (wrappedKey []byte, err error) {
 
 	var keyTemplate []*pkcs11.Attribute
+	var keyID []*pkcs11.Attribute
+
 	fmt.Printf("Searching for Label: %s , ObjClass %s\n",keyLabel, objClass)
 	keyTemplate = []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS,  decodeP11Class(objClass)),
-		pkcs11.NewAttribute(pkcs11.CKA_ID, keyLabel),
+		//pkcs11.NewAttribute(pkcs11.CKA_ID, keyLabel),
 	}	
+	if (keyByID) {
+		keyID = []*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_ID, keyLabel),
+		}
+	} else {
+		keyID = []*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_LABEL, keyLabel),
+		}
+	}
+	keyTemplate = append(keyTemplate, keyID...)
 
 	// start the search for object
 	err = p11w.Context.FindObjectsInit(
