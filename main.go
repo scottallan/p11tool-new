@@ -85,7 +85,9 @@ func main() {
 	objClass := flag.String("objClass", "", "CKA_CLASS for Deletion of Objects")
 	outF := flag.String("outFile","out.pem","output file for CSR Generation")
 	noDec := flag.Bool("noDec", false, "when set wrapped material will remain encrypted")
+
 	byCKAID := flag.Bool("byCKAID", false, "when set we will assume keyLabel is a CKA_ID represented as a string")
+
 	maxObjectsToList := flag.Int("maxObjectsToList", 50, "Paramter to be used with -action list to specify how many objects to print")
 
 
@@ -285,10 +287,11 @@ func main() {
                         1,
                 )
                 exitWhenError(err)
+
 		var wrappedKey []byte
                 if *keyType == "RSA" {
 			wrappedKey, err = p11w.WrapP11Key(*objClass, *keyLabel, w[0], *byCKAID)
-                        exitWhenError(err)
+      exitWhenError(err)
 			decryptedKey, err := p11w.DecryptP11Key(wrappedKey, w[0])
 			outFile, err := os.Create(*outF)
                         if err != nil {
@@ -296,6 +299,7 @@ func main() {
                                 return
                         }
                         defer outFile.Close()
+
                         fmt.Printf("writing key to %s\n", *outF)
 			if (*noDec) {
 				fmt.Printf("writing encrypted\n?")
@@ -304,7 +308,8 @@ func main() {
 				fmt.Printf("writing decrypted\n")
 				err = ioutil.WriteFile(*outF,decryptedKey,0644)
 			}
-                        if err != nil {
+
+      if err != nil {
                                 return
                         }
 
