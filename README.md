@@ -91,7 +91,7 @@ PKCS11 provider found specified slot label: myvmeslot (slot: 498477766, index: 0
 +-------+-----------------+------------------------------------------------------------------+------------------------------------------------------------------+--------------+-------------+-------------+------------+
 ```
 
-### Generating CSR & Importing Signed Cert
+### Generating CSR & Importing Signed Cert (EC ONLY)
 Generate CSR for new keys
 ```
 - You need to modify the contrib/consolidated.json file to provide the correct CSR Information for you cert.
@@ -222,3 +222,44 @@ Deleting all keys in a slot
 p11tool-new -slot slot -pin 1234 -lib  /usr/safenet/lunaclient/lib/libCryptoki2_64.so -action deleteObj -objClass ALL
 
 ```
+
+### Generating RSA Key Pair
+
+```text
+
+The tool provides the mechanism to generate RSA key pairs in the HMS also.
+
+Gernating an RSA Key Pair
+
+p11tool-new --action generate -keyType RSA -keyLen 2048 -keyLabel <KeyLabel> -slot <slot> -pin <slotPin> -lib /opt/nfast/toolkits/pkcs11/libcknfast.so
+
+```
+
+### Create a DES Wrapping KEy
+
+```text
+The tool allows the creation of a key for wrapping objects off of the HSM
+
+to create a wrapping key:
+
+p11tool-new --action generateDES -keyLabel <keyLabel> -keyType DES3 -lib /opt/nfast/toolkits/pkcs11/libcknfast.so -slot <slot> -pin <pin>
+
+```
+
+### Unwrapping Key From HSM
+
+```text
+The tool allows a previously created wrapping key to be used to wrap key material off of the HSM.
+
+to wrap key material out of the HSM:
+
+p11tool-new --action  wrapKeyWithDES3 -slot <slot> -pin <pin> -lib /opt/nfast/toolkits/pkcs11/libcknfast.so -keyLabel <keyLabel> -objClass CKO_PRIVATE_KEY -wrapKey <wrappingKeyLabel> -keyType RSA -outFile <outFileName>
+
+by default the private key will now be in the outFileName in decrypted format.
+To have the key in its encrypted form in the outFileName use the -noDec true flag
+
+p11tool-new --action  wrapKeyWithDES3 -slot <slot> -pin <pin> -lib /opt/nfast/toolkits/pkcs11/libcknfast.so -keyLabel <keyLabel> -objClass CKO_PRIVATE_KEY -wrapKey <wrappingKeyLabel> -keyType RSA -noDec true -outFile <outFileName>
+
+
+```
+
