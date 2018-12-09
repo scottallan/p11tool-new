@@ -1008,7 +1008,7 @@ func (p11w *Pkcs11Wrapper) WrapP11Key(objClass string, keyLabel string, w pkcs11
 	fmt.Printf("Searching for Label: %s , ObjClass %s\n",keyLabel, objClass)
 	keyTemplate = []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS,  decodeP11Class(objClass)),
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, keyLabel),
+		pkcs11.NewAttribute(pkcs11.CKA_ID, keyLabel),
 	}	
 
 	// start the search for object
@@ -1263,7 +1263,6 @@ func (p11w *Pkcs11Wrapper) GenerateRSA(rsa RsaKey, keySize int, keyLabel string)
 	fmt.Printf("exponent set to %v\n",n)
 	rsa.ephemeral = false
 	rsa.rsaKeySize = keySize
-	
 
 	pubkey_t := []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
@@ -1274,6 +1273,7 @@ func (p11w *Pkcs11Wrapper) GenerateRSA(rsa RsaKey, keySize int, keyLabel string)
 			pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, true),
 			pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, publabel),
+			pkcs11.NewAttribute(pkcs11.CKA_ID, publabel),
 
 			pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, n.Bytes()),
 	}
@@ -1290,6 +1290,7 @@ func (p11w *Pkcs11Wrapper) GenerateRSA(rsa RsaKey, keySize int, keyLabel string)
 			////pkcs11.NewAttribute(pkcs11.CKA_WRAP, true),
 			pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, true),
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, prvlabel),
+			pkcs11.NewAttribute(pkcs11.CKA_ID, publabel),
 
 			/*REMOVE Explicit Attribute Setting
 			pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, ec.exportable),
