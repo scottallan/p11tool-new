@@ -16,6 +16,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	//"golang.org/x/crypto/pkcs12"
 
 	//"github.com/cloudflare/cfssl/csr"
@@ -232,6 +233,25 @@ func (k *EcdsaKey) ImportPubKeyFromCertFile(file string) (err error) {
 	k.PubKey = x509Cert.PublicKey.(*ecdsa.PublicKey)
 
 	return
+}
+
+func (k *EcdsaKey) ImportPubKeyFromBase64Cert(cert string) (err error) {
+
+	certFile, err := base64.StdEncoding.DecodeString(cert)
+	if err != nil {
+		return
+	}
+
+	certBlock, _ := pem.Decode(certFile)
+        x509Cert, err := x509.ParseCertificate(certBlock.Bytes)
+        if err != nil {
+                return
+        }
+
+        k.PubKey = x509Cert.PublicKey.(*ecdsa.PublicKey)
+
+        return
+
 }
 
 func (k *EcdsaKey) ImportPrivKeyFromP12(file string, password string) (err error) {
