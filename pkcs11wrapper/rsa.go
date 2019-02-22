@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
+	"fmt"
 	"io/ioutil"
 )
 
@@ -62,8 +63,24 @@ func (k *RsaKey) ImportPrivKeyFromFile(file string) (err error) {
 	}
 
 	keyBlock, _ := pem.Decode(keyFile)
-	k.PrivKey, err = x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
-	if err != nil {
+
+	switch keyBlock.Type {
+	// PKCS1 key
+	case "RSA PRIVATE KEY":
+		k.PrivKey, err = x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+		if err != nil {
+			return
+		}
+	// PKCS8 key
+	case "PRIVATE KEY":
+		pk8Key, err := x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
+		if err != nil {
+			return
+		}
+		k.PrivKey = pk8Key.(*rsa.PrivateKey)
+	// UNSUPPORTED
+	default:
+		err = fmt.Errorf("unsupported key type: %v", keyBlock.Type)
 		return
 	}
 

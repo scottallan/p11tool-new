@@ -289,12 +289,27 @@ func (k *EcdsaKey) ImportPrivKeyFromFile(file string) (err error) {
 	}
 
 	keyBlock, _ := pem.Decode(keyFile)
-	key, err := x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
-	if err != nil {
+
+	switch keyBlock.Type {
+	// PKCS1 key
+	case "EC PRIVATE KEY":
+		k.PrivKey, err = x509.ParseECPrivateKey(keyBlock.Bytes)
+		if err != nil {
+			return
+		}
+	// PKCS8 key
+	case "PRIVATE KEY":
+		pk8Key, err := x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
+		if err != nil {
+			return
+		}
+		k.PrivKey = pk8Key.(*ecdsa.PrivateKey)
+	// UNSUPPORTED
+	default:
+		err = fmt.Errorf("unsupported key type: %v", keyBlock.Type)
 		return
 	}
 
-	k.PrivKey = key.(*ecdsa.PrivateKey)
 	k.PubKey = &k.PrivKey.PublicKey
 	k.PrivKeyBlock = keyBlock
 
