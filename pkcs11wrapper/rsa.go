@@ -3,24 +3,23 @@ package pkcs11wrapper
 import (
 	"crypto"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/x509"
 	"encoding/hex"
-
-	"crypto/rsa"
-	"crypto/sha512"
 	"encoding/pem"
 	"io/ioutil"
 )
 
 type RsaKey struct {
-	PubKey  *rsa.PublicKey
-	PrivKey *rsa.PrivateKey
-	SKI     SubjectKeyIdentifier
+	PubKey      *rsa.PublicKey
+	PrivKey     *rsa.PrivateKey
+	SKI         SubjectKeyIdentifier
 	Certificate []*x509.Certificate
-	ephemeral	bool
-	rsaKeySize	int
+	ephemeral   bool
+	rsaKeySize  int
 }
 
 // SKI returns the subject key identifier of this key.
@@ -48,7 +47,6 @@ func (k *RsaKey) GenSKI() {
 
 	return
 }
-
 
 func (k *RsaKey) Generate(bits int) (err error) {
 

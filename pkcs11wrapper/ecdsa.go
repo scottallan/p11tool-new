@@ -1,7 +1,6 @@
 package pkcs11wrapper
 
 import (
-	"encoding/json"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -9,56 +8,49 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/base64" //"golang.org/x/crypto/pkcs12"
+	//"github.com/cloudflare/cfssl/csr"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/scottallan/crypto/pkcs12" //"golang.org/x/crypto/pbkdf2"
+	"github.com/youmark/pkcs8"            //"github.com/hyperledger/fabric/bccsp"
 	"io/ioutil"
 	"math/big"
-	"crypto/x509/pkix"
-	"encoding/base64"
-	//"golang.org/x/crypto/pkcs12"
-
-	//"github.com/cloudflare/cfssl/csr"
-
-	"github.com/scottallan/crypto/pkcs12"
-	//"golang.org/x/crypto/pbkdf2"
-	"github.com/youmark/pkcs8"
-
-	//"github.com/hyperledger/fabric/bccsp"
-	//"github.com/hyperledger/fabric/bccsp/utils"
-
 	"os"
+	//"github.com/hyperledger/fabric/bccsp/utils"
 )
 
 type EcdsaKey struct {
-	PubKey  *ecdsa.PublicKey
-	PrivKey *ecdsa.PrivateKey
-	SKI     SubjectKeyIdentifier
-	Certificate []*x509.Certificate
-	PrivKeyBlock  *pem.Block
+	PubKey       *ecdsa.PublicKey
+	PrivKey      *ecdsa.PrivateKey
+	SKI          SubjectKeyIdentifier
+	Certificate  []*x509.Certificate
+	PrivKeyBlock *pem.Block
 	//optional
-	keyLabel string
-	NamedCurveAsString	string
-	curveOid	asn1.RawValue
-	ephemeral	bool
-	exportable	bool
-	Token		bool
-        asnFullBytes	[]byte
-	pk8		pk8
+	keyLabel           string
+	NamedCurveAsString string
+	curveOid           asn1.RawValue
+	ephemeral          bool
+	exportable         bool
+	Token              bool
+	asnFullBytes       []byte
+	pk8                pk8
 
-
-	Req	*CSRInfo
+	Req *CSRInfo
 }
 
 // pk8 reflects an ASN.1, PKCS#8 PrivateKey. See
 // ftp://ftp.rsasecurity.com/pub/pkcs/pkcs-8/pkcs-8v1_2.asn
 // and RFC 5208.
 type pk8 struct {
-        Version    int
-        Algo       pkix.AlgorithmIdentifier
-        PrivateKey []byte
-        // optional attributes omitted.
+	Version    int
+	Algo       pkix.AlgorithmIdentifier
+	PrivateKey []byte
+	// optional attributes omitted.
 }
 
 type SubjectKeyIdentifier struct {
@@ -67,7 +59,6 @@ type SubjectKeyIdentifier struct {
 	Sha256      string
 	Sha256Bytes []byte
 }
-
 
 // RFC 3279, 2.3 Public Key Algorithms
 //
@@ -84,11 +75,10 @@ type SubjectKeyIdentifier struct {
 // id-ecPublicKey OBJECT IDENTIFIER ::= {
 //       iso(1) member-body(2) us(840) ansi-X9-62(10045) keyType(2) 1 }
 var (
-        oidPublicKeyRSA   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 1}
-        oidPublicKeyDSA   = asn1.ObjectIdentifier{1, 2, 840, 10040, 4, 1}
-        oidPublicKeyECDSA = asn1.ObjectIdentifier{1, 2, 840, 10045, 2, 1}
+	oidPublicKeyRSA   = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 1, 1}
+	oidPublicKeyDSA   = asn1.ObjectIdentifier{1, 2, 840, 10040, 4, 1}
+	oidPublicKeyECDSA = asn1.ObjectIdentifier{1, 2, 840, 10045, 2, 1}
 )
-
 
 /*func (csp *impl) signECDSA(k ecdsaPrivateKey, digest []byte, opts bccsp.SignerOpts) (signature []byte, err error) {
 	r, s, err := csp.signP11ECDSA(k.ski, digest)
@@ -128,31 +118,28 @@ func (csp *impl) verifyECDSA(k ecdsaPublicKey, signature, digest []byte, opts bc
 
 // SKI returns the subject key identifier of this key.
 
-
-
 func (k *EcdsaKey) GetCSRInfo(jsonFile string) CSRInfo {
 	raw, err := ioutil.ReadFile(jsonFile)
 	if err != nil {
-		fmt.Println("err.Error() %s",jsonFile)
+		fmt.Println("err.Error() %s", jsonFile)
 	}
 
 	var host CSRInfo
 	err = json.Unmarshal(raw, &host)
 	if err != nil {
-		fmt.Printf("error unmarshalling json %s\n",err)
+		fmt.Printf("error unmarshalling json %s\n", err)
 	}
 	return host
-
 
 }
 
 func ToJson(p interface{}) string {
-    bytes, err := json.Marshal(p)
-    if err != nil {
-        fmt.Println(err.Error())
-        os.Exit(1)
-    }
-    return string(bytes)
+	bytes, err := json.Marshal(p)
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+	return string(bytes)
 }
 
 func (k *EcdsaKey) GenSKI() {
@@ -174,7 +161,6 @@ func (k *EcdsaKey) GenSKI() {
 	hash.Write(raw)
 	k.SKI.Sha1Bytes = hash.Sum(nil)
 	k.SKI.Sha1 = hex.EncodeToString(k.SKI.Sha1Bytes)
-	
 
 	return
 }
@@ -243,14 +229,14 @@ func (k *EcdsaKey) ImportPubKeyFromBase64Cert(cert string) (err error) {
 	}
 
 	certBlock, _ := pem.Decode(certFile)
-        x509Cert, err := x509.ParseCertificate(certBlock.Bytes)
-        if err != nil {
-                return
-        }
+	x509Cert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return
+	}
 
-        k.PubKey = x509Cert.PublicKey.(*ecdsa.PublicKey)
+	k.PubKey = x509Cert.PublicKey.(*ecdsa.PublicKey)
 
-        return
+	return
 
 }
 
@@ -270,28 +256,28 @@ func (k *EcdsaKey) ImportPrivKeyFromP12(file string, password string) (err error
 	if len(cert) != 0 {
 		k.Certificate = cert
 		for _, certificate := range cert {
-			fmt.Printf("\nCertificate[s] Exists in P12 with len of %d value first cert %s\n\n",len(cert), certificate.Subject)
+			fmt.Printf("\nCertificate[s] Exists in P12 with len of %d value first cert %s\n\n", len(cert), certificate.Subject)
 		}
-		
+
 	}
-	
+
 	if CaseInsensitiveContains(os.Getenv("SECURITY_P11TOOL_DEBUG"), "TRUE") {
 
 		fmt.Printf("\npkcs8 privkey \n%c\n", pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyPkcs8}))
 		outFile, err := os.Create("out.pem")
 		if err != nil {
-			return err	
+			return err
 		}
 		defer outFile.Close()
 		err = pem.Encode(outFile, &pem.Block{Type: "PRIVATE KEY", Bytes: keyPkcs8})
-	
+
 		if err != nil {
 			return err
 		}
 	}
 	k.PrivKey = key.(*ecdsa.PrivateKey)
 	k.PubKey = &k.PrivKey.PublicKey
-	
+
 	return
 }
 
@@ -312,20 +298,19 @@ func (k *EcdsaKey) ImportPrivKeyFromFile(file string) (err error) {
 	k.PubKey = &k.PrivKey.PublicKey
 	k.PrivKeyBlock = keyBlock
 
-        //Built on x509/pkcs8.go
-        var privKey pk8
-        if _, err := asn1.Unmarshal(keyBlock.Bytes, &privKey); err != nil {
-                return err
-        }
-        if privKey.Algo.Algorithm.Equal(oidPublicKeyECDSA) {
-                rawBytes := privKey.Algo.Parameters.FullBytes
-                k.asnFullBytes = rawBytes
-		k.pk8  = privKey
-        } else {
-                err := fmt.Errorf("Unable to extract ASN1 FullBytes from PKCS8 structure")
-                return err
-        }
-
+	//Built on x509/pkcs8.go
+	var privKey pk8
+	if _, err := asn1.Unmarshal(keyBlock.Bytes, &privKey); err != nil {
+		return err
+	}
+	if privKey.Algo.Algorithm.Equal(oidPublicKeyECDSA) {
+		rawBytes := privKey.Algo.Parameters.FullBytes
+		k.asnFullBytes = rawBytes
+		k.pk8 = privKey
+	} else {
+		err := fmt.Errorf("Unable to extract ASN1 FullBytes from PKCS8 structure")
+		return err
+	}
 
 	return
 }
