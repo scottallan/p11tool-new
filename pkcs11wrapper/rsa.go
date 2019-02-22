@@ -28,21 +28,13 @@ func (k *RsaKey) GenSKI() {
 		return
 	}
 
-	// Marshall the public key
-	raw, err := x509.MarshalPKIXPublicKey(k.PubKey)
-	if err != nil {
-		return
-	}
+	// get raw public key
+	raw := k.PubKey.N.Bytes()
 
 	// Hash it
-	hash := sha256.New()
-	hash.Write(raw)
-	k.SKI.Sha256Bytes = hash.Sum(nil)
+	k.SKI.Sha256Bytes = sha256.Sum256(raw)[:]
 	k.SKI.Sha256 = hex.EncodeToString(k.SKI.Sha256Bytes)
-
-	hash = sha1.New()
-	hash.Write(raw)
-	k.SKI.Sha1Bytes = hash.Sum(nil)
+	k.SKI.Sha1Bytes = sha1.Sum(raw)[:]
 	k.SKI.Sha1 = hex.EncodeToString(k.SKI.Sha1Bytes)
 
 	return
