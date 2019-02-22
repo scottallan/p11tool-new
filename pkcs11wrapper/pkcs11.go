@@ -726,7 +726,7 @@ func (p11w *Pkcs11Wrapper) ImportRSAKey(rsa RsaKey) (err error) {
 		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, pubExpBytes),
 
 		pkcs11.NewAttribute(pkcs11.CKA_ID, rsa.SKI.Sha256Bytes),
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, "TLSPUBKEY"),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, rsa.SKI.Sha256),
 		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
 	}
 
@@ -734,7 +734,7 @@ func (p11w *Pkcs11Wrapper) ImportRSAKey(rsa RsaKey) (err error) {
 	if err != nil {
 		return
 	} else {
-		fmt.Printf("Object was imported with CKA_LABEL:%s CKA_ID:%x\n", "TLSPUBKEY", rsa.SKI.Sha256Bytes)
+		fmt.Printf("Object was imported with CKA_LABEL:%s CKA_ID:%x\n", rsa.SKI.Sha256, rsa.SKI.Sha256Bytes)
 	}
 
 	keyTemplate = []*pkcs11.Attribute{
@@ -755,7 +755,7 @@ func (p11w *Pkcs11Wrapper) ImportRSAKey(rsa RsaKey) (err error) {
 		pkcs11.NewAttribute(pkcs11.CKA_PRIME_2, rsa.PrivKey.Primes[1].Bytes()),
 
 		pkcs11.NewAttribute(pkcs11.CKA_ID, rsa.SKI.Sha256Bytes),
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, "TLSPRVKEY"),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, rsa.SKI.Sha256),
 		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, true),
 
 		// Error: pkcs11: 0x12: CKR_ATTRIBUTE_TYPE_INVALID
@@ -764,7 +764,7 @@ func (p11w *Pkcs11Wrapper) ImportRSAKey(rsa RsaKey) (err error) {
 
 	_, err = p11w.Context.CreateObject(p11w.Session, keyTemplate)
 	if err == nil {
-		fmt.Printf("Object was imported with CKA_LABEL:%s CKA_ID:%x\n", "TLSPRVKEY", rsa.SKI.Sha256Bytes)
+		fmt.Printf("Object was imported with CKA_LABEL:%s CKA_ID:%x\n", rsa.SKI.Sha256, rsa.SKI.Sha256Bytes)
 	}
 	return
 
