@@ -1,10 +1,9 @@
 package pkcs11wrapper
 
 import (
-	"crypto"
-	//"errors"
-
+	"crypto" //"errors"
 	//"github.com/hyperledger/fabric/bccsp"
+
 	"github.com/miekg/pkcs11"
 )
 
@@ -59,7 +58,7 @@ type BCCSP interface {
 }
 
 type impl struct {
-	BCCSP 
+	BCCSP
 
 	//conf *config
 	//ks   bccsp.KeyStore
@@ -72,8 +71,6 @@ type impl struct {
 	noPrivImport bool
 	softVerify   bool
 }
-
-
 
 // Sign signs digest using key k.
 // The opts argument should be appropriate for the primitive used.

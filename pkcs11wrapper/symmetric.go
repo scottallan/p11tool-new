@@ -1,37 +1,38 @@
 package pkcs11wrapper
 
 import (
-	"github.com/miekg/pkcs11"
+	"bytes"
+	"math/big"
 	"os"
 	"strconv"
-	"math/big"
-	"bytes"
+
+	"github.com/miekg/pkcs11"
 )
 
 //ImportSymKey allows the importing of Symmetric Keys
 func (p11w *Pkcs11Wrapper) ImportSymKey(keyType string, key string, keyStore string, keyStorePass string, keyLabel string) (err error) {
 
-n := new(big.Int)
-    n, ok := n.SetString(key, 16)
-    if !ok {
-        ExitWithMessage("BigInt SetString:", nil)
-    }
+	n := new(big.Int)
+	n, ok := n.SetString(key, 16)
+	if !ok {
+		ExitWithMessage("BigInt SetString:", nil)
+	}
 
-getAttr := p11w.GetSymPkcs11Template(keyLabel, len(key), keyType)
-pkcs11KeyValue := []*pkcs11.Attribute{
-	pkcs11.NewAttribute(pkcs11.CKA_VALUE, n.Bytes()),
-	pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
-	pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
-}
-getAttr = append(getAttr, pkcs11KeyValue...)
-_, err = p11w.Context.CreateObject(
-	p11w.Session,
-	getAttr,
+	getAttr := p11w.GetSymPkcs11Template(keyLabel, len(key), keyType)
+	pkcs11KeyValue := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_VALUE, n.Bytes()),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
+	}
+	getAttr = append(getAttr, pkcs11KeyValue...)
+	_, err = p11w.Context.CreateObject(
+		p11w.Session,
+		getAttr,
 	)
-if err != nil {
-	ExitWithMessage("Unable to Import Key", err)
-}
-return
+	if err != nil {
+		ExitWithMessage("Unable to Import Key", err)
+	}
+	return
 
 }
 
@@ -46,17 +47,17 @@ func (p11w *Pkcs11Wrapper) CreateSymKey(objectLabel string, keyLen int, keyType 
 	case "DES3":
 		pkcs11_mech = pkcs11.NewMechanism(pkcs11.CKM_DES3_KEY_GEN, nil)
 	case "SHA256_HMAC":
-	if CaseInsensitiveContains(p11w.Library.Info.ManufacturerID, "ncipher") {
-		pkcs11_mech = pkcs11.NewMechanism(pkcs11.CKM_NC_SHA256_HMAC_KEY_GEN, nil)
-	} else {
-		pkcs11_mech = pkcs11.NewMechanism(pkcs11.CKM_GENERIC_SECRET_KEY_GEN, nil)
-	}
+		if CaseInsensitiveContains(p11w.Library.Info.ManufacturerID, "ncipher") {
+			pkcs11_mech = pkcs11.NewMechanism(pkcs11.CKM_NC_SHA256_HMAC_KEY_GEN, nil)
+		} else {
+			pkcs11_mech = pkcs11.NewMechanism(pkcs11.CKM_GENERIC_SECRET_KEY_GEN, nil)
+		}
 	case "SHA384_HMAC":
-	if CaseInsensitiveContains(p11w.Library.Info.ManufacturerID, "ncipher") {
-		pkcs11_mech = pkcs11.NewMechanism(pkcs11.CKM_NC_SHA384_HMAC_KEY_GEN, nil)
-	} else {
-		pkcs11_mech = pkcs11.NewMechanism(pkcs11.CKM_GENERIC_SECRET_KEY_GEN, nil)
-	}
+		if CaseInsensitiveContains(p11w.Library.Info.ManufacturerID, "ncipher") {
+			pkcs11_mech = pkcs11.NewMechanism(pkcs11.CKM_NC_SHA384_HMAC_KEY_GEN, nil)
+		} else {
+			pkcs11_mech = pkcs11.NewMechanism(pkcs11.CKM_GENERIC_SECRET_KEY_GEN, nil)
+		}
 	default:
 		pkcs11_mech = pkcs11.NewMechanism(pkcs11.CKM_GENERIC_SECRET_KEY_GEN, nil)
 	}
@@ -95,7 +96,7 @@ func (p11w *Pkcs11Wrapper) GetSymPkcs11Template(objectLabel string, keyLen int, 
 
 	// default CKA_KEY_TYPE
 	var pkcs11VendorAttr []*pkcs11.Attribute
-	var pkcs11KeyType    []*pkcs11.Attribute
+	var pkcs11KeyType []*pkcs11.Attribute
 	// Overrides Key Length
 	SymKeyLength := keyLen
 	pkcs11_keylen := os.Getenv("SECURITY_PROVIDER_CONFIG_KLEN")
@@ -114,8 +115,8 @@ func (p11w *Pkcs11Wrapper) GetSymPkcs11Template(objectLabel string, keyLen int, 
 		pkcs11VendorAttr = []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, true),
 			pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, true),
-		        pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, SymKeyLength), /* KeyLength */
-		}	
+			pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, SymKeyLength), /* KeyLength */
+		}
 		pkcs11VendorAttr = append(pkcs11VendorAttr, pkcs11KeyType...)
 	case "DES3":
 
@@ -139,8 +140,8 @@ func (p11w *Pkcs11Wrapper) GetSymPkcs11Template(objectLabel string, keyLen int, 
 				pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, true),
 				pkcs11.NewAttribute(pkcs11.CKA_ENCRYPT, true),
 				pkcs11.NewAttribute(pkcs11.CKA_WRAP, true),
-				pkcs11.NewAttribute(pkcs11.CKA_UNWRAP, true),				
-			}	
+				pkcs11.NewAttribute(pkcs11.CKA_UNWRAP, true),
+			}
 		}
 		pkcs11VendorAttr = append(pkcs11VendorAttr, pkcs11KeyType...)
 	case "GENERIC_SECRET":
@@ -148,39 +149,39 @@ func (p11w *Pkcs11Wrapper) GetSymPkcs11Template(objectLabel string, keyLen int, 
 			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET),
 		}
 		pkcs11VendorAttr = []*pkcs11.Attribute{
-		        pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, SymKeyLength), /* KeyLength */
+			pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, SymKeyLength), /* KeyLength */
 			pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
 			pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
 		}
 		pkcs11VendorAttr = append(pkcs11VendorAttr, pkcs11KeyType...)
 	case "SHA256_HMAC":
-	if CaseInsensitiveContains(p11w.Library.Info.ManufacturerID, "ncipher") {
-		pkcs11KeyType = []*pkcs11.Attribute{
-			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_SHA256_HMAC),
+		if CaseInsensitiveContains(p11w.Library.Info.ManufacturerID, "ncipher") {
+			pkcs11KeyType = []*pkcs11.Attribute{
+				pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_SHA256_HMAC),
+			}
+		} else {
+			pkcs11KeyType = []*pkcs11.Attribute{
+				pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET),
+			}
 		}
-	} else {
-		pkcs11KeyType = []*pkcs11.Attribute{
-			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET),
-		}
-	}
 		pkcs11VendorAttr = []*pkcs11.Attribute{
-		        pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, SymKeyLength), /* KeyLength */
+			pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, SymKeyLength), /* KeyLength */
 			pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
 			pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
 		}
 		pkcs11VendorAttr = append(pkcs11VendorAttr, pkcs11KeyType...)
 	case "SHA384_HMAC":
-	if CaseInsensitiveContains(p11w.Library.Info.ManufacturerID, "ncipher") {
-		pkcs11KeyType = []*pkcs11.Attribute{
-			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_SHA384_HMAC),
+		if CaseInsensitiveContains(p11w.Library.Info.ManufacturerID, "ncipher") {
+			pkcs11KeyType = []*pkcs11.Attribute{
+				pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_SHA384_HMAC),
+			}
+		} else {
+			pkcs11KeyType = []*pkcs11.Attribute{
+				pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET),
+			}
 		}
-	} else {
-		pkcs11KeyType = []*pkcs11.Attribute{
-			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET),
-		}
-	}
 		pkcs11VendorAttr = []*pkcs11.Attribute{
-		        pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, SymKeyLength), /* KeyLength */
+			pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, SymKeyLength), /* KeyLength */
 			pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
 			pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
 		}
@@ -190,7 +191,7 @@ func (p11w *Pkcs11Wrapper) GetSymPkcs11Template(objectLabel string, keyLen int, 
 			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_GENERIC_SECRET),
 		}
 		pkcs11VendorAttr = []*pkcs11.Attribute{
-		        pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, SymKeyLength), /* KeyLength */
+			pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, SymKeyLength), /* KeyLength */
 			pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
 			pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
 		}
@@ -217,8 +218,8 @@ func (p11w *Pkcs11Wrapper) GetSymPkcs11Template(objectLabel string, keyLen int, 
 
 	SymPkcs11Template = []*pkcs11.Attribute{
 		// common to all
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, objectLabel),      /* Name of Key */
-		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),             /* This key should persist */
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, objectLabel), /* Name of Key */
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),        /* This key should persist */
 		//pkcs11.NewAttribute(pkcs11.CKA_VALUE_LEN, SymKeyLength), /* KeyLength */
 		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
 		// vendor specific override
@@ -252,7 +253,7 @@ func (p11w *Pkcs11Wrapper) SignHmacSha384(o pkcs11.ObjectHandle, message []byte)
 }
 
 // EncAESGCM test CKM_AES_GCM for encryption
-func (p11w *Pkcs11Wrapper) EncAESGCM(o pkcs11.ObjectHandle, message []byte) (enc []byte, IV []byte,  err error) {
+func (p11w *Pkcs11Wrapper) EncAESGCM(o pkcs11.ObjectHandle, message []byte) (enc []byte, IV []byte, err error) {
 
 	//gcparams := pkcs11.NewGCMParams(make([]byte, 16), nil, 128)
 	gcparams := pkcs11.NewGCMParams([]byte{}, nil, 128)
@@ -268,7 +269,7 @@ func (p11w *Pkcs11Wrapper) EncAESGCM(o pkcs11.ObjectHandle, message []byte) (enc
 	}
 
 	// do the encryption
-	enc, err = p11w.Context.Encrypt(p11w.Session, message) 
+	enc, err = p11w.Context.Encrypt(p11w.Session, message)
 	if err != nil {
 		return
 	}
@@ -286,12 +287,12 @@ func (p11w *Pkcs11Wrapper) EncAESGCM(o pkcs11.ObjectHandle, message []byte) (enc
 func (p11w *Pkcs11Wrapper) DecAESGCM(o pkcs11.ObjectHandle, cipherText []byte, IV []byte) (message []byte, err error) {
 
 	//gcparams := pkcs11.NewGCMParams(make([]byte, 16), nil, 128)
-        gcparams := pkcs11.NewGCMParams(IV, nil, 128)
+	gcparams := pkcs11.NewGCMParams(IV, nil, 128)
 	err = p11w.Context.DecryptInit(
 		p11w.Session,
 		[]*pkcs11.Mechanism{
-                        pkcs11.NewMechanism(pkcs11.CKM_AES_GCM, gcparams),
-                },
+			pkcs11.NewMechanism(pkcs11.CKM_AES_GCM, gcparams),
+		},
 		o,
 	)
 	if err != nil {
@@ -306,4 +307,3 @@ func (p11w *Pkcs11Wrapper) DecAESGCM(o pkcs11.ObjectHandle, cipherText []byte, I
 
 	return
 }
-

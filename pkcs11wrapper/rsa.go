@@ -3,24 +3,24 @@ package pkcs11wrapper
 import (
 	"crypto"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/x509"
 	"encoding/hex"
-
-	"crypto/rsa"
-	"crypto/sha512"
 	"encoding/pem"
+	"fmt"
 	"io/ioutil"
 )
 
 type RsaKey struct {
-	PubKey  *rsa.PublicKey
-	PrivKey *rsa.PrivateKey
-	SKI     SubjectKeyIdentifier
+	PubKey      *rsa.PublicKey
+	PrivKey     *rsa.PrivateKey
+	SKI         SubjectKeyIdentifier
 	Certificate []*x509.Certificate
-	ephemeral	bool
-	rsaKeySize	int
+	ephemeral   bool
+	rsaKeySize  int
 }
 
 // SKI returns the subject key identifier of this key.
@@ -29,26 +29,19 @@ func (k *RsaKey) GenSKI() {
 		return
 	}
 
-	// Marshall the public key
-	raw, err := x509.MarshalPKIXPublicKey(k.PubKey)
-	if err != nil {
-		return
-	}
+	// get raw public key
+	raw := k.PubKey.N.Bytes()
 
 	// Hash it
-	hash := sha256.New()
-	hash.Write(raw)
-	k.SKI.Sha256Bytes = hash.Sum(nil)
+	b32 := sha256.Sum256(raw)
+	k.SKI.Sha256Bytes = b32[:]
 	k.SKI.Sha256 = hex.EncodeToString(k.SKI.Sha256Bytes)
-
-	hash = sha1.New()
-	hash.Write(raw)
-	k.SKI.Sha1Bytes = hash.Sum(nil)
+	b20 := sha1.Sum(raw)
+	k.SKI.Sha1Bytes = b20[:]
 	k.SKI.Sha1 = hex.EncodeToString(k.SKI.Sha1Bytes)
 
 	return
 }
-
 
 func (k *RsaKey) Generate(bits int) (err error) {
 
@@ -72,8 +65,24 @@ func (k *RsaKey) ImportPrivKeyFromFile(file string) (err error) {
 	}
 
 	keyBlock, _ := pem.Decode(keyFile)
-	k.PrivKey, err = x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
-	if err != nil {
+
+	switch keyBlock.Type {
+	// PKCS1 key
+	case "RSA PRIVATE KEY":
+		k.PrivKey, err = x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+		if err != nil {
+			return
+		}
+	// PKCS8 key
+	case "PRIVATE KEY":
+		pk8Key, pk8Err := x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
+		if pk8Err != nil {
+			return pk8Err
+		}
+		k.PrivKey = pk8Key.(*rsa.PrivateKey)
+	// UNSUPPORTED
+	default:
+		err = fmt.Errorf("unsupported key type: %v", keyBlock.Type)
 		return
 	}
 

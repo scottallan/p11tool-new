@@ -1,17 +1,15 @@
 package main
 
 import (
-	"encoding/hex"
-	//"encoding/json"
-	"io/ioutil"
+	"encoding/hex" //"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/miekg/pkcs11"
+	"io/ioutil"
 	"os"
-	"strings"
-	//"github.com/cloudflare/cfssl/csr"
+	"strings" //"github.com/cloudflare/cfssl/csr"
 	//"github.com/cloudflare/cfssl/log"
 
+	"github.com/miekg/pkcs11"
 	pw "github.com/scottallan/p11tool-new/pkcs11wrapper"
 )
 
@@ -64,8 +62,6 @@ func CaseInsensitiveContains(s, substr string) bool {
 	return strings.Contains(s, substr)
 }
 
-
-
 func main() {
 
 	// get flags
@@ -81,15 +77,14 @@ func main() {
 	keyStorepass := flag.String("keyStorepass", "securekey", "Keystore Storepass")
 	key := flag.String("key", "", "Key as HEX String")
 	csrInfo := flag.String("csrInfo", "", "json file with values for CSR Creation")
-	wrapKey := flag.String("wrapKey","wrapKey", "DES3 Wrapping Key for unwrapping key material onto Gemalto")
+	wrapKey := flag.String("wrapKey", "wrapKey", "DES3 Wrapping Key for unwrapping key material onto Gemalto")
 	objClass := flag.String("objClass", "", "CKA_CLASS for Deletion of Objects")
-	outF := flag.String("outFile","out.pem","output file for CSR Generation")
+	outF := flag.String("outFile", "out.pem", "output file for CSR Generation")
 	noDec := flag.Bool("noDec", false, "when set wrapped material will remain encrypted")
 
 	byCKAID := flag.Bool("byCKAID", false, "when set we will assume keyLabel is a CKA_ID represented as a string")
 
 	maxObjectsToList := flag.Int("maxObjectsToList", 50, "Paramter to be used with -action list to specify how many objects to print")
-
 
 	flag.Parse()
 
@@ -115,7 +110,6 @@ func main() {
 			os.Exit(0)
 		}
 
-
 	case "getSkiFromCert":
 		key := pw.EcdsaKey{}
 		err = key.ImportPubKeyFromCertFile(*keyFile)
@@ -124,17 +118,15 @@ func main() {
 		fmt.Printf("SKI(sha256): %s\n", key.SKI.Sha256)
 		os.Exit(0)
 
-
 	case "getSkiFromB64Cert":
-		 key := pw.EcdsaKey{}
-                err = key.ImportPubKeyFromBase64Cert(*keyFile)
-                exitWhenError(err)
-                key.GenSKI()
-                fmt.Printf("SKI(sha256): %s\n", key.SKI.Sha256)
-                os.Exit(0)
+		key := pw.EcdsaKey{}
+		err = key.ImportPubKeyFromBase64Cert(*keyFile)
+		exitWhenError(err)
+		key.GenSKI()
+		fmt.Printf("SKI(sha256): %s\n", key.SKI.Sha256)
+		os.Exit(0)
 
 	}
-
 
 	// complete actions which require HSM
 
@@ -178,9 +170,9 @@ func main() {
 		if *keyType == "RSA" {
 			err = p11w.ImportRSAKeyFromFile(*keyFile, *keyStore)
 			exitWhenError(err)
-		} else if *keyType == "AES" || 
-			*keyType =="GENERIC_SECRET" || 
-			*keyType == "SHA256_HMAC" || 
+		} else if *keyType == "AES" ||
+			*keyType == "GENERIC_SECRET" ||
+			*keyType == "SHA256_HMAC" ||
 			*keyType == "SHA384_HMAC" {
 			err = p11w.ImportSymKey(*keyType, *key, *keyStore, *keyStorepass, *keyLabel)
 			exitWhenError(err)
@@ -200,7 +192,6 @@ func main() {
 		err = p11w.ImportCertificate(ec)
 		exitWhenError(err)
 
-	
 	case "generate":
 		if *keyType == "RSA" {
 			rsa := pw.RsaKey{}
@@ -213,12 +204,12 @@ func main() {
 			_, err := p11w.GenerateEC(ec)
 			exitWhenError(err)
 		}
-	
+
 	case "deleteObj":
 		if *objClass == "ALL" {
-			p11w.DeleteObj("ALL","")
+			p11w.DeleteObj("ALL", "")
 		} else {
-			p11w.DeleteObj(*objClass,*keyLabel)
+			p11w.DeleteObj(*objClass, *keyLabel)
 		}
 
 	case "generateCSR":
@@ -227,18 +218,18 @@ func main() {
 			//rsa := pw.RsaKey{}
 			//_, _, err = p11w.GenCSR(rsa)
 			//TODO generate and sign RSA
-		
+
 		} else if *keyType == "EC" {
 			ec := pw.EcdsaKey{}
 			ec.SKI.Sha256 = *keyLabel
-			
+
 			csrInfo := ec.GetCSRInfo(*csrInfo)
 			/*ec.Req = &pw.CSRInfo{
 				Names: []pw.Name{names},
 				Hosts: hosts.Hosts,
 			}*/
 			ec.Req = &csrInfo
-		
+
 			fmt.Println(pw.ToJson(csrInfo))
 
 			csr, _, err := p11w.GenCSR(ec)
@@ -246,11 +237,11 @@ func main() {
 			outFile, err := os.Create(*outF)
 			if err != nil {
 				fmt.Printf("Unable to write CSR %s", err.Error())
-				return 	
+				return
 			}
 			defer outFile.Close()
 			fmt.Printf("writing csr to %s\n", *outF)
-			err = ioutil.WriteFile(*outF,csr,0644)
+			err = ioutil.WriteFile(*outF, csr, 0644)
 			if err != nil {
 				return
 			}
@@ -285,11 +276,11 @@ func main() {
 		hmac, err := p11w.SignHmacSha384(o[0], testMsg)
 		exitWhenError(err)
 		fmt.Printf("successfully tested CKM_SHA384_HMAC on key with LABEL: %s\n HMAC %x\n", *keyLabel, hmac)
-	
-	case "unwrapECWithDES3":	
+
+	case "unwrapECWithDES3":
 		w, _, err := p11w.FindObjects([]*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, *wrapKey),
-			},
+		},
 			1,
 		)
 		exitWhenError(err)
@@ -300,47 +291,46 @@ func main() {
 		}
 
 	case "wrapKeyWithDES3":
-		 w, _, err := p11w.FindObjects([]*pkcs11.Attribute{
-                        pkcs11.NewAttribute(pkcs11.CKA_LABEL, *wrapKey),
-                        },
-                        1,
-                )
-                exitWhenError(err)
+		w, _, err := p11w.FindObjects([]*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_LABEL, *wrapKey),
+		},
+			1,
+		)
+		exitWhenError(err)
 
 		var wrappedKey []byte
-                if *keyType == "RSA" {
+		if *keyType == "RSA" {
 			wrappedKey, err = p11w.WrapP11Key(*objClass, *keyLabel, w[0], *byCKAID)
-      exitWhenError(err)
+			exitWhenError(err)
 			decryptedKey, err := p11w.DecryptP11Key(wrappedKey, w[0])
 			outFile, err := os.Create(*outF)
-                        if err != nil {
-                                fmt.Printf("Unable to write key %s", err.Error())
-                                return
-                        }
-                        defer outFile.Close()
+			if err != nil {
+				fmt.Printf("Unable to write key %s", err.Error())
+				return
+			}
+			defer outFile.Close()
 
-                        fmt.Printf("writing key to %s\n", *outF)
-			if (*noDec) {
+			fmt.Printf("writing key to %s\n", *outF)
+			if *noDec {
 				fmt.Printf("writing encrypted\n?")
-				err = ioutil.WriteFile(*outF,wrappedKey,0644)	
+				err = ioutil.WriteFile(*outF, wrappedKey, 0644)
 			} else {
 				fmt.Printf("writing decrypted\n")
-				err = ioutil.WriteFile(*outF,decryptedKey,0644)
+				err = ioutil.WriteFile(*outF, decryptedKey, 0644)
 			}
 
-      if err != nil {
-                                return
-                        }
+			if err != nil {
+				return
+			}
 
-                }
-
+		}
 
 	case "TestAESGCM":
 		pkcs11Attr := pkcs11.NewAttribute(pkcs11.CKA_LABEL, *keyLabel)
 		p11w.ListObjects(
 			[]*pkcs11.Attribute{
 				pkcs11Attr,
-			},  *maxObjectsToList,
+			}, *maxObjectsToList,
 		)
 		o, _, err := p11w.FindObjects([]*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, *keyLabel),
@@ -351,10 +341,10 @@ func main() {
 		testMsg := []byte("ThisIsATestClearTextString")
 		enc, iv, err := p11w.EncAESGCM(o[0], testMsg)
 		exitWhenError(err)
-		fmt.Printf("successfully encrypted  message '%s' with CKM_AES_GCM and key with LABEL: %s\n CipherText %v\n IV: %v\n",testMsg, *keyLabel, enc, iv)
+		fmt.Printf("successfully encrypted  message '%s' with CKM_AES_GCM and key with LABEL: %s\n CipherText %v\n IV: %v\n", testMsg, *keyLabel, enc, iv)
 		dec, err := p11w.DecAESGCM(o[0], enc, iv)
 		exitWhenError(err)
-		fmt.Printf("successfully decrypted ciptherText '%v' with CKM_AES_GCM and key with LABEL: %s\n ClearText %s\n",enc, *keyLabel, dec)
+		fmt.Printf("successfully decrypted ciptherText '%v' with CKM_AES_GCM and key with LABEL: %s\n ClearText %s\n", enc, *keyLabel, dec)
 
 	case "generateSecret":
 		if *keyType == "GENERIC_SECRET" || *keyType == "SHA256_HMAC" || *keyType == "SHA384_HMAC" {
@@ -367,7 +357,7 @@ func main() {
 			fmt.Printf("Successfully tested CKM_SHA384_HMAC on key with label: %s \n HMAC %x\n", *keyLabel, hmac)
 			p11w.ListObjects(
 				[]*pkcs11.Attribute{},
-				 *maxObjectsToList,
+				*maxObjectsToList,
 			)
 
 		}
@@ -379,7 +369,7 @@ func main() {
 			exitWhenError(err)
 			p11w.ListObjects(
 				[]*pkcs11.Attribute{},
-				 *maxObjectsToList,
+				*maxObjectsToList,
 			)
 
 		}
@@ -492,7 +482,7 @@ func main() {
 	default:
 		p11w.ListObjects(
 			[]*pkcs11.Attribute{},
-			 *maxObjectsToList,
+			*maxObjectsToList,
 		)
 
 	}
