@@ -152,14 +152,11 @@ func (k *EcdsaKey) GenSKI() {
 	raw := elliptic.Marshal(k.PubKey.Curve, k.PubKey.X, k.PubKey.Y)
 
 	// Hash it
-	hash := sha256.New()
-	hash.Write(raw)
-	k.SKI.Sha256Bytes = hash.Sum(nil)
+	b32 := sha256.Sum256(raw)
+	k.SKI.Sha256Bytes = b32[:]
 	k.SKI.Sha256 = hex.EncodeToString(k.SKI.Sha256Bytes)
-
-	hash = sha1.New()
-	hash.Write(raw)
-	k.SKI.Sha1Bytes = hash.Sum(nil)
+	b20 := sha1.Sum(raw)
+	k.SKI.Sha1Bytes = b20[:]
 	k.SKI.Sha1 = hex.EncodeToString(k.SKI.Sha1Bytes)
 
 	return
@@ -299,9 +296,9 @@ func (k *EcdsaKey) ImportPrivKeyFromFile(file string) (err error) {
 		}
 	// PKCS8 key
 	case "PRIVATE KEY":
-		pk8Key, err := x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
-		if err != nil {
-			return
+		pk8Key, pk8Err := x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
+		if pk8Err != nil {
+			return pk8Err
 		}
 		k.PrivKey = pk8Key.(*ecdsa.PrivateKey)
 	// UNSUPPORTED
