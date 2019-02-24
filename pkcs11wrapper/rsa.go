@@ -29,6 +29,7 @@ type RsaKey struct {
 // SKI returns the subject key identifier of this key.
 func (k *RsaKey) GenSKI() {
 	if k.PubKey == nil {
+		fmt.Errorf("Public Key Not Found %v\n",k)
 		return
 	}
 
