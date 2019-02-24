@@ -805,6 +805,110 @@ func (p11w *Pkcs11Wrapper) ImportECKeyFromFile(file string, keyStore string, key
 
 }
 
+//UnWrapRSAKeyFromFile takes a RSA Key from file imput and unwraps onto an HSM
+func (p11w *Pkcs11Wrapper) UnWrapRSAKeyFromFile(file string, keyStore string, keyStorepass string, keyLabel string, w pkcs11.ObjectHandle) (err error) {
+	// read in key from file
+	//ec := EcdsaKey{}
+	var rsa RsaKey
+	
+
+	//err = ec.ImportPrivKeyFromFile(file)
+	switch keyStore {
+	/*case "p12":
+		ec = EcdsaKey{}
+		ec.keyLabel = keyLabel
+		err = ec.ImportPrivKeyFromP12(file, keyStorepass)
+		if err != nil {
+			return err
+		}*/
+	default:
+		rsa = RsaKey{}
+		rsa.keyLabel = keyLabel
+		err = rsa.ImportPrivKeyFromFile(file)
+		if err != nil {
+			return err
+		}
+	}
+
+	rsa.Token = true
+
+	wrappedKey, err := p11w.WrapRSAKey(rsa, w)
+	if err != nil {
+		fmt.Printf("Unable to WRAP EC Key %v with error %v", ec.PrivKey.D.Bytes(), err)
+		return err
+	}
+	
+	/*marshaledOID, err := GetECParamMarshaled(ec.PrivKey.Params().Name)
+	err = p11w.UnwrapECKey(ec, w, wrappedKey, keyLabel, marshaledOID)
+	if err != nil {
+		fmt.Printf("Unable to UnWRAP EC Key")
+		return err
+	}*/
+
+	/* import key to hsm
+	err = p11w.UnwrapECKey(ec)
+	if len(ec.Certificate) != 0 {
+		err = p11w.ImportCertificate(ec)
+	}*/
+
+	return
+}
+
+//WrapECKey Wraps an EC Key
+func (p11w *Pkcs11Wrapper) WrapRSAKey(rsa RsaKey, w pkcs11.ObjectHandle) (wrappedKey []byte, err error) {
+	if rsa.PrivKey == nil {
+		err = errors.New("no key to WRAP")
+		return
+	}
+
+	rsa.GenSKI()
+
+	/*	marshaledOID, err := GetECParamMarshaled(ec.PrivKey.Params().Name)
+		if err != nil {
+			return
+		}
+	*/
+
+	/*
+		Wrapping a Key requires the key to be in the HSM
+		wrappedKey, err := p11w.Context.WrapKey(
+			p11w.Session,
+			[]*pkcs11.Mechanism{
+				pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,nil),
+			},
+			"wrappingKey",
+			w,
+		)
+		if err != nil {
+			return
+		}
+	*/
+	err = p11w.Context.EncryptInit(
+		p11w.Session,
+		[]*pkcs11.Mechanism{
+			//pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,make([]byte, 8)),
+			pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD, make([]byte, 8)),
+		},
+		w, //Wrapping Key
+	)
+	if err != nil {
+		fmt.Printf("Unable to Initialise Encryptor %v with key %v", err, w)
+		return nil, err
+	}
+	wrappedKey, err = p11w.Context.Encrypt(
+		p11w.Session,
+		rsa.PrivKeyBlock.Bytes,
+	)
+	if err != nil {
+		fmt.Printf("Unable to Encrypt Key : %v", err)
+		return nil, err
+	}
+
+	fmt.Printf("Wrapped Key with CKM_DES3_CBS with CipherText %v from PrivKey %v\n", wrappedKey, rsa.PrivKeyBlock.Bytes)
+
+	return
+}
+
 //UnWrapECKeyFromFile takes a EC Key from file imput and unwraps onto an HSM
 func (p11w *Pkcs11Wrapper) UnWrapECKeyFromFile(file string, keyStore string, keyStorepass string, keyLabel string, w pkcs11.ObjectHandle) (err error) {
 	// read in key from file

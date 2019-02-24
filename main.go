@@ -56,7 +56,7 @@ func searchForLib(paths string) (firstFound string, err error) {
 	return
 }
 
-/* returns true if substr is in string s */
+/*CaseInsensitiveContains Returns true if substr is in string s */
 func CaseInsensitiveContains(s, substr string) bool {
 	s, substr = strings.ToUpper(s), strings.ToUpper(substr)
 	return strings.Contains(s, substr)
@@ -68,7 +68,7 @@ func main() {
 	pkcs11Library := flag.String("lib", "", "Location of pkcs11 library")
 	slotLabel := flag.String("slot", "ForFabric", "Slot Label")
 	slotPin := flag.String("pin", "98765432", "Slot PIN")
-	action := flag.String("action", "list", "list,import,generate,generateAndImport,generateSecret,generateAES,generateDES,unwrapECWithDES3,wrapKeyWithDES3,getSKI,getSkiFromCert,getSkiFromB64Cert,SignHMAC384,TestAESGCM,generateCSR,importCert,deleteObj")
+	action := flag.String("action", "list", "list,import,generate,generateAndImport,generateSecret,generateAES,generateDES,unwrapECWithDES3,unwrapRSAWithDES3,wrapKeyWithDES3,getSKI,getSkiFromCert,getSkiFromB64Cert,SignHMAC384,TestAESGCM,generateCSR,importCert,deleteObj")
 	keyFile := flag.String("keyFile", "/some/dir/key.pem)", "path to key you want to import or getSKI")
 	keyType := flag.String("keyType", "EC", "Type of key (EC,RSA,GENERIC_SECRET,AES,SHA256_HMAC,SHA384_HMAC,DES3)")
 	keyLen := flag.Int("keyLen", 32, "Key Length for CKK_GENERIC_SECRET (32,48,...)")
@@ -286,6 +286,19 @@ func main() {
 		exitWhenError(err)
 
 		if *keyType == "EC" {
+			err := p11w.UnWrapRSAKeyFromFile(*keyFile, *keyStore, *keyStorepass, *keyLabel, w[0])
+			exitWhenError(err)
+		}
+
+	case "unwrapRSAWithDES3":
+		w, _, err := p11w.FindObjects([]*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_LABEL, *wrapKey),
+		},
+		1,
+		)
+		exitWhenError(err)
+
+		if *keyType == "RSA" {
 			err := p11w.UnWrapECKeyFromFile(*keyFile, *keyStore, *keyStorepass, *keyLabel, w[0])
 			exitWhenError(err)
 		}

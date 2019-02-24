@@ -15,12 +15,15 @@ import (
 )
 
 type RsaKey struct {
-	PubKey      *rsa.PublicKey
-	PrivKey     *rsa.PrivateKey
-	SKI         SubjectKeyIdentifier
-	Certificate []*x509.Certificate
-	ephemeral   bool
-	rsaKeySize  int
+	PubKey       *rsa.PublicKey
+	PrivKey      *rsa.PrivateKey
+	SKI          SubjectKeyIdentifier
+	PrivKeyBlock *pem.Block
+	keyLabel     string
+	Certificate  []*x509.Certificate
+	ephemeral    bool
+	Token        bool
+	rsaKeySize   int
 }
 
 // SKI returns the subject key identifier of this key.
@@ -88,6 +91,7 @@ func (k *RsaKey) ImportPrivKeyFromFile(file string) (err error) {
 
 	// store public key
 	k.PubKey = &k.PrivKey.PublicKey
+	k.PrivKeyBlock = keyBlock
 
 	return
 }
