@@ -832,14 +832,12 @@ func (p11w *Pkcs11Wrapper) UnWrapRSAKeyFromFile(file string, keyStore string, ke
 
 	rsa.Token = true
 
-	//wrappedKey, err := p11w.WrapRSAKey(rsa, w)
-	_, err = p11w.WrapRSAKey(rsa, w)
+	wrappedKey, err := p11w.WrapRSAKey(&rsa, w)
+	//_, err = p11w.WrapRSAKey(rsa, w)
 	if err != nil {
 		fmt.Printf("Unable to WRAP EC Key %v with error %v", rsa.PrivKeyBlock.Bytes, err)
 		return err
 	}
-	
-	//marshaledOID, err := GetECParamMarshaled(ec.PrivKey.Params().Name)
 	err = p11w.UnwrapRSAKey(rsa, w, wrappedKey, keyLabel)
 	if err != nil {
 		fmt.Printf("Unable to UnWRAP RSA Key")
@@ -856,7 +854,7 @@ func (p11w *Pkcs11Wrapper) UnWrapRSAKeyFromFile(file string, keyStore string, ke
 }
 
 //WrapECKey Wraps an EC Key
-func (p11w *Pkcs11Wrapper) WrapRSAKey(rsa RsaKey, w pkcs11.ObjectHandle) (wrappedKey []byte, err error) {
+func (p11w *Pkcs11Wrapper) WrapRSAKey(rsa *RsaKey, w pkcs11.ObjectHandle) (wrappedKey []byte, err error) {
 	if rsa.PrivKey == nil {
 		err = errors.New("no key to WRAP")
 		return
@@ -935,7 +933,7 @@ func (p11w *Pkcs11Wrapper) UnwrapRSAKey(rsa RsaKey, w pkcs11.ObjectHandle, wrapp
 		fmt.Printf("Public Object FAILED TO IMPORT with CKA_LABEL:%s CKA_ID:%x\n ERROR %s \n", rsa.keyLabel, rsa.SKI.Sha256Bytes, err)
 		return
 	} else {
-		fmt.Printf("Object was imported with CKA_LABEL:%s CKA_ID:%x\n", rsa.SKI.Sha256, rsa.SKI.Sha256Bytes)
+		fmt.Printf("Public Object was imported with CKA_LABEL:%s CKA_ID:%x\n", rsa.SKI.Sha256, rsa.SKI.Sha256Bytes)
 	}
 
 	//_ = []*pkcs11.Attribute{
