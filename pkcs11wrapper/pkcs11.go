@@ -839,12 +839,12 @@ func (p11w *Pkcs11Wrapper) UnWrapRSAKeyFromFile(file string, keyStore string, ke
 		return err
 	}
 	
-	/*marshaledOID, err := GetECParamMarshaled(ec.PrivKey.Params().Name)
-	err = p11w.UnwrapECKey(ec, w, wrappedKey, keyLabel, marshaledOID)
+	//marshaledOID, err := GetECParamMarshaled(ec.PrivKey.Params().Name)
+	err = p11w.UnwrapRSAKey(rsa, w, wrappedKey, keyLabel)
 	if err != nil {
-		fmt.Printf("Unable to UnWRAP EC Key")
+		fmt.Printf("Unable to UnWRAP RSA Key")
 		return err
-	}*/
+	}
 
 	/* import key to hsm
 	err = p11w.UnwrapECKey(ec)
@@ -908,6 +908,88 @@ func (p11w *Pkcs11Wrapper) WrapRSAKey(rsa RsaKey, w pkcs11.ObjectHandle) (wrappe
 	fmt.Printf("Wrapped Key with CKM_DES3_CBS with CipherText %v from PrivKey %v\n", wrappedKey, rsa.PrivKeyBlock.Bytes)
 
 	return
+}
+
+//UnwrapRSAKeye EC Key Wrapped with DES3 Key
+func (p11w *Pkcs11Wrapper) UnwrapRSAKey(rsa RsaKey, w pkcs11.ObjectHandle, wrappedKey []byte, keyLabel string) (err error) {
+
+
+	// pubkey import
+	pubExpBytes := big.NewInt(int64(rsa.PubKey.E)).Bytes()
+
+	keyTemplate := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
+		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
+		pkcs11.NewAttribute(pkcs11.CKA_MODULUS, rsa.PubKey.N.Bytes()),
+		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, pubExpBytes),
+
+		pkcs11.NewAttribute(pkcs11.CKA_ID, rsa.SKI.Sha256Bytes),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, rsa.SKI.Sha256),
+		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, false),
+	}
+
+	_, err = p11w.Context.CreateObject(p11w.Session, keyTemplate)
+	if err != nil {
+		fmt.Printf("Public Object FAILED TO IMPORT with CKA_LABEL:%s CKA_ID:%x\n ERROR %s \n", rsa.keyLabel, rsa.SKI.Sha256Bytes, err)
+		return
+	} else {
+		fmt.Printf("Object was imported with CKA_LABEL:%s CKA_ID:%x\n", rsa.SKI.Sha256, rsa.SKI.Sha256Bytes)
+	}
+
+	//_ = []*pkcs11.Attribute{
+	keyTemplate = []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
+		pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
+		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
+		pkcs11.NewAttribute(pkcs11.CKA_DECRYPT, true),
+		pkcs11.NewAttribute(pkcs11.CKA_ID, rsa.SKI.Sha256Bytes),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, rsa.keyLabel),
+		pkcs11.NewAttribute(pkcs11.CKA_EXTRACTABLE, false),
+		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
+
+		// implicitly enable derive for now
+		//pkcs11.NewAttribute(pkcs11.CKA_DERIVE, true),
+	}
+
+	_, err = p11w.Context.UnwrapKey(
+		p11w.Session,
+		[]*pkcs11.Mechanism{
+			//pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,make([]byte, 8)),
+			pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD, make([]byte, 8)),
+		},
+		w,
+		wrappedKey,
+		keyTemplate,
+	)
+
+	if err != nil {
+		fmt.Printf("Object FAILED TO IMPORT with CKA_LABEL:%s\n ERROR %s\n wrapping key: %v\n DECRYPTING VALUE \n", keyLabel, err, w)
+		err = p11w.Context.DecryptInit(
+			p11w.Session,
+			[]*pkcs11.Mechanism{
+				pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD, make([]byte, 8)),
+			},
+			w, //Wrapping Key
+		)
+		if err != nil {
+			fmt.Printf("Unable to Initialise Encryptor %v with key %v", err, w)
+			return err
+		}
+		decryptedKey, err := p11w.Context.Decrypt(
+			p11w.Session,
+			wrappedKey,
+		)
+		fmt.Printf("DECRYPTED VALUE: %v \n", decryptedKey)
+		return err
+	} else {
+		fmt.Printf("Private Key Object was imported with CKA_LABEL:%x\n", rsa.SKI.Sha256Bytes)
+	}
+	return
+
 }
 
 //UnWrapECKeyFromFile takes a EC Key from file imput and unwraps onto an HSM
