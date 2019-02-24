@@ -286,7 +286,7 @@ func main() {
 		exitWhenError(err)
 
 		if *keyType == "EC" {
-			err := p11w.UnWrapRSAKeyFromFile(*keyFile, *keyStore, *keyStorepass, *keyLabel, w[0])
+			err := p11w.UnWrapECKeyFromFile(*keyFile, *keyStore, *keyStorepass, *keyLabel, w[0])
 			exitWhenError(err)
 		}
 
@@ -299,7 +299,7 @@ func main() {
 		exitWhenError(err)
 
 		if *keyType == "RSA" {
-			err := p11w.UnWrapECKeyFromFile(*keyFile, *keyStore, *keyStorepass, *keyLabel, w[0])
+			err := p11w.UnWrapRSAKeyFromFile(*keyFile, *keyStore, *keyStorepass, *keyLabel, w[0])
 			exitWhenError(err)
 		}
 

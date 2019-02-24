@@ -832,9 +832,10 @@ func (p11w *Pkcs11Wrapper) UnWrapRSAKeyFromFile(file string, keyStore string, ke
 
 	rsa.Token = true
 
-	wrappedKey, err := p11w.WrapRSAKey(rsa, w)
+	//wrappedKey, err := p11w.WrapRSAKey(rsa, w)
+	_, err = p11w.WrapRSAKey(rsa, w)
 	if err != nil {
-		fmt.Printf("Unable to WRAP EC Key %v with error %v", ec.PrivKey.D.Bytes(), err)
+		fmt.Printf("Unable to WRAP EC Key %v with error %v", rsa.PrivKeyBlock.Bytes, err)
 		return err
 	}
 	
