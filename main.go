@@ -6,8 +6,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"math"
 	"strings" //"github.com/cloudflare/cfssl/csr"
 	//"github.com/cloudflare/cfssl/log"
+	"syscall"
+	"os/signal"
+	"time"
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/miekg/pkcs11"
 	pw "github.com/scottallan/p11tool-new/pkcs11wrapper"
@@ -56,6 +61,52 @@ func searchForLib(paths string) (firstFound string, err error) {
 	return
 }
 
+func askForPin(less bool) (slotPin string, err error) {
+    //Start Fun Message for Security.  Note we dont do any of this and simply use terminal package to read in password
+    if !less {
+    fmt.Printf("***High Security Password Mode Detected***\n\n***Preparing SecureRandom Encrypted Memory Space***\n")
+    for i := 1; i <= 10; i++ {
+	    if math.Mod(float64(i), 2) == 1 {
+	    fmt.Printf(". %d%%",i*10)
+   	    } else {
+	    fmt.Print("...")
+    	    }
+	    time.Sleep(500 * time.Millisecond)
+    }
+    }
+    fmt.Printf("\nEnter Token Password (Pin):")
+    bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
+    if err !=nil {
+	    fmt.Println("Error Getting PIN from Terminal",err)
+	    return 
+    }
+    slotPin = string(bytePassword)
+    bytePassword = []byte{} 
+    fmt.Println() // it's necessary to add a new line after user's input
+    return
+}
+
+func cleanupPin(slotPin string, p11Pin *string, less bool) {
+    if slotPin == "" {
+	    if !less {
+	    //Output Fun message for Security.  Note we dont do this scrubbing and simply blank the password before exiting
+	    fmt.Printf("\n\n*********Srubbing Encrypted Memory Space for Secure Pin*********\n\n*********Writing Random 0's and 1's across 1,000,000 loops to Encrypted Memory Location!!!*********\n\nCLEANING:")
+	    for i := 1; i <= 10; i++ {
+            if math.Mod(float64(i), 2) == 1 {
+            fmt.Printf("... %d writes complete...",i*100000)
+            } else {
+            fmt.Print("...")
+            }
+            time.Sleep(500 * time.Millisecond)
+	    if i==10 {
+		    fmt.Println("1,000,000 writes complete... EXITING\n")
+	    }
+    }
+    }
+}
+    *p11Pin = ""
+}
+
 /*CaseInsensitiveContains Returns true if substr is in string s */
 func CaseInsensitiveContains(s, substr string) bool {
 	s, substr = strings.ToUpper(s), strings.ToUpper(substr)
@@ -67,7 +118,7 @@ func main() {
 	// get flags
 	pkcs11Library := flag.String("lib", "", "Location of pkcs11 library")
 	slotLabel := flag.String("slot", "ForFabric", "Slot Label")
-	slotPin := flag.String("pin", "98765432", "Slot PIN")
+	slotPin := flag.String("pin", "", "Slot PIN")
 	action := flag.String("action", "list", "list,import,generate,generateAndImport,generateSecret,generateAES,generateDES,wrapKeyWithDES3,unwrapASYMWithDES3,getSKI,getSkiFromCert,getSkiFromB64Cert,SignHMAC384,TestAESGCM,generateCSR,importCert,deleteObj")
 	keyFile := flag.String("keyFile", "/some/dir/key.pem)", "path to key you want to import or getSKI")
 	keyType := flag.String("keyType", "EC", "Type of key (EC,RSA,GENERIC_SECRET,AES,SHA256_HMAC,SHA384_HMAC,DES3)")
@@ -81,11 +132,20 @@ func main() {
 	objClass := flag.String("objClass", "", "CKA_CLASS for Deletion of Objects")
 	outF := flag.String("outFile", "out.pem", "output file for CSR Generation")
 	noDec := flag.Bool("noDec", false, "when set wrapped material will remain encrypted")
+	less := flag.Bool("less", false, "Dont show password preamble")
 
 	byCKAID := flag.Bool("byCKAID", false, "when set we will assume keyLabel is a CKA_ID represented as a string")
 
 	maxObjectsToList := flag.Int("maxObjectsToList", 50, "Paramter to be used with -action list to specify how many objects to print")
 
+	var gracefulStop = make(chan os.Signal)
+	signal.Notify(gracefulStop, syscall.SIGTERM)
+        signal.Notify(gracefulStop, syscall.SIGINT)
+	go func() {
+		sig := <-gracefulStop
+		fmt.Printf("\n**********caught signal: %+v  EXITING\n", sig)
+		os.Exit(1)	
+	}()
 	flag.Parse()
 
 	var err error
@@ -132,6 +192,7 @@ func main() {
 
 	// initialize pkcs11
 	var p11Lib string
+	var p11Pin string
 
 	if *pkcs11Library == "" {
 		p11Lib, err = searchForLib(defaultLibPaths)
@@ -140,13 +201,21 @@ func main() {
 		p11Lib, err = searchForLib(*pkcs11Library)
 		exitWhenError(err)
 	}
+        if *slotPin =="" {
+		p11Pin, err = askForPin(*less)
+		if err !=nil {
+                 exitWhenError(err)
+		}
+	} else {
+		p11Pin = *slotPin
+	}
 
 	p11w = pw.Pkcs11Wrapper{
 		Library: pw.Pkcs11Library{
 			Path: p11Lib,
 		},
 		SlotLabel: *slotLabel,
-		SlotPin:   *slotPin,
+		SlotPin:   p11Pin,
 	}
 
 	err = p11w.InitContext()
@@ -163,6 +232,7 @@ func main() {
 	defer p11w.Context.Finalize()
 	defer p11w.Context.CloseSession(p11w.Session)
 	defer p11w.Context.Logout(p11w.Session)
+	defer cleanupPin(*slotPin, &p11Pin, *less)
 
 	switch *action {
 
