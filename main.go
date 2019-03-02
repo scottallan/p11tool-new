@@ -46,6 +46,7 @@ func exitWhenError(err error) {
 
 type termInfo struct {
 	termState *terminal.State
+	curState *terminal.State
 }
 
 // search comma-separated list of paths for pkcs11 lib
@@ -66,7 +67,7 @@ func searchForLib(paths string) (firstFound string, err error) {
 	return
 }
 
-func askForPin(less bool) (slotPin string, err error) {	
+func (t *termInfo) askForPin(less bool) (slotPin string, err error) {	
 	//Start Fun Message for Security.  Note we dont do any of this and simply use terminal package to read in password
     if !less {
     fmt.Printf("***High Security Password Mode Detected***\n\n***Preparing SecureRandom Encrypted Memory Space***\n")
@@ -80,7 +81,8 @@ func askForPin(less bool) (slotPin string, err error) {
     }
     }
     fmt.Printf("\nEnter Token Password (Pin):")
-    bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
+	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
+	
     if err !=nil {
 	    fmt.Println("Error Getting PIN from Terminal",err)
 	    return 
@@ -91,7 +93,7 @@ func askForPin(less bool) (slotPin string, err error) {
     return
 }
 
-func cleanupPin(slotPin string, p11Pin *string, less bool) {
+func (t *termInfo) cleanupPin(slotPin string, p11Pin *string, less bool) {
     if slotPin == "" {
 	    if !less {
 	    //Output Fun message for Security.  Note we dont do this scrubbing and simply blank the password before exiting
@@ -145,23 +147,24 @@ func main() {
 
 	var gracefulStop = make(chan os.Signal)
 	signal.Notify(gracefulStop, syscall.SIGTERM)
-        signal.Notify(gracefulStop, syscall.SIGINT)
-	go func() {
-		sig := <-gracefulStop
-		        //unix.IoctlSetTermios(int(syscall.Stdin), ioctlWriteTermios, termios)
-                panic(fmt.Sprintf("\n**********caught signal: %+v  EXITING\n", sig))
-	}()
+    signal.Notify(gracefulStop, syscall.SIGINT)
+	
 	flag.Parse()
 
 
 
 	var err error
-	termState := termInfo{}
 	//Neet to Get State of the Existing Terminal
-	//_, err := unix.IoctlGetTermios(int(syscall.Stdin), ioctlReadTermios)
+	termState := termInfo{}
 	tState, err := terminal.GetState(int(syscall.Stdin))
 	termState.termState = tState
 	fmt.Printf("Terminal State %v \n", termState.termState)
+	go func() {
+		sig := <-gracefulStop
+		        //unix.IoctlSetTermios(int(syscall.Stdin), ioctlWriteTermios, termios)
+				fmt.Printf("\n**********caught signal: %+v  EXITING\n", sig))
+				fmt.Printf("Terminal State %v \n", termState.termState)
+	}()
 
 	// complete actions which do not require HSM
 	switch *action {
@@ -215,7 +218,7 @@ func main() {
 		exitWhenError(err)
 	}
         if *slotPin =="" {
-		p11Pin, err = askForPin(*less)
+		p11Pin, err = termState.askForPin(*less)
 		if err !=nil {
                  exitWhenError(err)
 		}
@@ -245,7 +248,7 @@ func main() {
 	defer p11w.Context.Finalize()
 	defer p11w.Context.CloseSession(p11w.Session)
 	defer p11w.Context.Logout(p11w.Session)
-	defer cleanupPin(*slotPin, &p11Pin, *less)
+	defer termState.cleanupPin(*slotPin, &p11Pin, *less)
 
 	switch *action {
 
