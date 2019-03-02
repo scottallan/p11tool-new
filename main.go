@@ -158,20 +158,20 @@ func main() {
 	termState := termInfo{}
 	tState, err := terminal.GetState(int(syscall.Stdin))
 	termState.termState = tState
-	fmt.Printf("Terminal State %v \n", termState.termState)
 	go func() {
 		sig := <-gracefulStop
 				var err error
 				fmt.Printf("\n**********caught signal: %+v  EXITING\n", sig)
-				termState.curState, err := terminal.GetState(int(syscall.Stdin))
+				cState, err := terminal.GetState(int(syscall.Stdin))
 				if err != nil {
 					panic(err)
 				}
+				termState.curState = cState
 				if termState.curState == termState.termState {
 					fmt.Println("Terminal State OK!  Exiting Normally")
 					panic(err)
 				} else {
-					fmt.Println("Terminal State Changed! Reverting before Existing")
+					fmt.Printf("Terminal State Changed!\n[Current State: %v]\n[Original State :%v] Reverting before Exiting\n", *termState.curState, *termState.termState)
 					err = terminal.Restore(int(syscall.Stdin), termState.termState)
 					panic(err)
 				}
