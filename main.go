@@ -132,7 +132,7 @@ func main() {
 	objClass := flag.String("objClass", "", "CKA_CLASS for Deletion of Objects")
 	outF := flag.String("outFile", "out.pem", "output file for CSR Generation")
 	noDec := flag.Bool("noDec", false, "when set wrapped material will remain encrypted")
-	less := flag.Bool("less", false, "Dont show password preamble")
+	less := flag.Bool("less", true, "Dont show password preamble")
 
 	byCKAID := flag.Bool("byCKAID", false, "when set we will assume keyLabel is a CKA_ID represented as a string")
 
@@ -143,8 +143,7 @@ func main() {
         signal.Notify(gracefulStop, syscall.SIGINT)
 	go func() {
 		sig := <-gracefulStop
-		fmt.Printf("\n**********caught signal: %+v  EXITING\n", sig)
-		os.Exit(1)	
+                panic(fmt.Sprintf("\n**********caught signal: %+v  EXITING\n", sig))
 	}()
 	flag.Parse()
 
