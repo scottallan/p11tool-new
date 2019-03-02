@@ -162,7 +162,7 @@ func main() {
 	go func() {
 		sig := <-gracefulStop
 		        //unix.IoctlSetTermios(int(syscall.Stdin), ioctlWriteTermios, termios)
-				fmt.Printf("\n**********caught signal: %+v  EXITING\n", sig))
+				fmt.Printf("\n**********caught signal: %+v  EXITING\n", sig)
 				fmt.Printf("Terminal State %v \n", termState.termState)
 	}()
 
