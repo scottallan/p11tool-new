@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"time"
 	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/sys/unix"
 
 	"github.com/miekg/pkcs11"
 	pw "github.com/scottallan/p11tool-new/pkcs11wrapper"
@@ -43,6 +44,10 @@ func exitWhenError(err error) {
 	}
 }
 
+type termInfo struct {
+	termState *terminal.State
+}
+
 // search comma-separated list of paths for pkcs11 lib
 func searchForLib(paths string) (firstFound string, err error) {
 
@@ -61,8 +66,8 @@ func searchForLib(paths string) (firstFound string, err error) {
 	return
 }
 
-func askForPin(less bool) (slotPin string, err error) {
-    //Start Fun Message for Security.  Note we dont do any of this and simply use terminal package to read in password
+func askForPin(less bool) (slotPin string, err error) {	
+	//Start Fun Message for Security.  Note we dont do any of this and simply use terminal package to read in password
     if !less {
     fmt.Printf("***High Security Password Mode Detected***\n\n***Preparing SecureRandom Encrypted Memory Space***\n")
     for i := 1; i <= 10; i++ {
@@ -143,9 +148,17 @@ func main() {
         signal.Notify(gracefulStop, syscall.SIGINT)
 	go func() {
 		sig := <-gracefulStop
+		        //unix.IoctlSetTermios(int(syscall.Stdin), ioctlWriteTermios, termios)
                 panic(fmt.Sprintf("\n**********caught signal: %+v  EXITING\n", sig))
 	}()
 	flag.Parse()
+
+	termState := termInfo{}
+	//Neet to Get State of the Existing Terminal
+	//_, err := unix.IoctlGetTermios(int(syscall.Stdin), ioctlReadTermios)
+	termInfo.termState, err := terminal.GetState(int(syscall.Stdin))
+	fmt.Printf("Terminal State %v \n", termInfo.termState)
+
 
 	var err error
 
