@@ -5,16 +5,16 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"math"
+	"os"
 	"strings" //"github.com/cloudflare/cfssl/csr"
 	//"github.com/cloudflare/cfssl/log"
-	"syscall"
-	"os/signal"
-	"time"
-	"golang.org/x/crypto/ssh/terminal"
 	"github.com/miekg/pkcs11"
 	pw "github.com/scottallan/p11tool-new/pkcs11wrapper"
+	"golang.org/x/crypto/ssh/terminal"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 const (
@@ -44,7 +44,7 @@ func exitWhenError(err error) {
 
 type termInfo struct {
 	termState *terminal.State
-	curState *terminal.State
+	curState  *terminal.State
 }
 
 // search comma-separated list of paths for pkcs11 lib
@@ -65,51 +65,51 @@ func searchForLib(paths string) (firstFound string, err error) {
 	return
 }
 
-func (t *termInfo) askForPin(less bool) (slotPin string, err error) {	
+func (t *termInfo) askForPin(less bool) (slotPin string, err error) {
 	//Start Fun Message for Security.  Note we dont do any of this and simply use terminal package to read in password
-    if !less {
-    fmt.Printf("***High Security Password Mode Detected***\n\n***Preparing SecureRandom Encrypted Memory Space***\n")
-    for i := 1; i <= 10; i++ {
-	    if math.Mod(float64(i), 2) == 1 {
-	    fmt.Printf(". %d%%",i*10)
-   	    } else {
-	    fmt.Print("...")
-    	    }
-	    time.Sleep(500 * time.Millisecond)
-    }
-    }
-    fmt.Printf("\nEnter Token Password (Pin):")
+	if !less {
+		fmt.Printf("***High Security Password Mode Detected***\n\n***Preparing SecureRandom Encrypted Memory Space***\n")
+		for i := 1; i <= 10; i++ {
+			if math.Mod(float64(i), 2) == 1 {
+				fmt.Printf(". %d%%", i*10)
+			} else {
+				fmt.Print("...")
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+	}
+	fmt.Printf("\nEnter Token Password (Pin):")
 	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
-	
-    if err !=nil {
-	    fmt.Println("Error Getting PIN from Terminal",err)
-	    return 
-    }
-    slotPin = string(bytePassword)
-    bytePassword = []byte{} 
-    fmt.Println() // it's necessary to add a new line after user's input
-    return
+
+	if err != nil {
+		fmt.Println("Error Getting PIN from Terminal", err)
+		return
+	}
+	slotPin = string(bytePassword)
+	bytePassword = []byte{}
+	fmt.Println() // it's necessary to add a new line after user's input
+	return
 }
 
 func (t *termInfo) cleanupPin(slotPin string, p11Pin *string, less bool) {
-    if slotPin == "" {
-	    if !less {
-	    //Output Fun message for Security.  Note we dont do this scrubbing and simply blank the password before exiting
-	    fmt.Printf("\n\n*********Srubbing Encrypted Memory Space for Secure Pin*********\n\n*********Writing Random 0's and 1's across 1,000,000 loops to Encrypted Memory Location!!!*********\n\nCLEANING:")
-	    for i := 1; i <= 10; i++ {
-            if math.Mod(float64(i), 2) == 1 {
-            fmt.Printf("... %d writes complete...",i*100000)
-            } else {
-            fmt.Print("...")
-            }
-            time.Sleep(500 * time.Millisecond)
-	    if i==10 {
-		    fmt.Println("1,000,000 writes complete... EXITING\n")
-	    }
-    }
-    }
-}
-    *p11Pin = ""
+	if slotPin == "" {
+		if !less {
+			//Output Fun message for Security.  Note we dont do this scrubbing and simply blank the password before exiting
+			fmt.Printf("\n\n*********Srubbing Encrypted Memory Space for Secure Pin*********\n\n*********Writing Random 0's and 1's across 1,000,000 loops to Encrypted Memory Location!!!*********\n\nCLEANING:")
+			for i := 1; i <= 10; i++ {
+				if math.Mod(float64(i), 2) == 1 {
+					fmt.Printf("... %d writes complete...", i*100000)
+				} else {
+					fmt.Print("...")
+				}
+				time.Sleep(500 * time.Millisecond)
+				if i == 10 {
+					fmt.Println("1,000,000 writes complete... EXITING\n")
+				}
+			}
+		}
+	}
+	*p11Pin = ""
 }
 
 /*CaseInsensitiveContains Returns true if substr is in string s */
@@ -145,11 +145,9 @@ func main() {
 
 	var gracefulStop = make(chan os.Signal)
 	signal.Notify(gracefulStop, syscall.SIGTERM)
-    signal.Notify(gracefulStop, syscall.SIGINT)
-	
+	signal.Notify(gracefulStop, syscall.SIGINT)
+
 	flag.Parse()
-
-
 
 	var err error
 	//Neet to Get State of the Existing Terminal
@@ -158,21 +156,21 @@ func main() {
 	termState.termState = tState
 	go func() {
 		sig := <-gracefulStop
-				var err error
-				fmt.Printf("\n**********caught signal: %+v  EXITING\n", sig)
-				cState, err := terminal.GetState(int(syscall.Stdin))
-				if err != nil {
-					panic(err)
-				}
-				termState.curState = cState
-				if termState.curState == termState.termState {
-					fmt.Println("Terminal State OK!  Exiting Normally")
-					panic(err)
-				} else {
-					fmt.Printf("Terminal State Changed!\n[Current State: %v]\n[Original State :%v] Reverting before Exiting\n", *termState.curState, *termState.termState)
-					err = terminal.Restore(int(syscall.Stdin), termState.termState)
-					panic(err)
-				}
+		var err error
+		fmt.Printf("\n**********caught signal: %+v  EXITING\n", sig)
+		cState, err := terminal.GetState(int(syscall.Stdin))
+		if err != nil {
+			panic(err)
+		}
+		termState.curState = cState
+		if termState.curState == termState.termState {
+			fmt.Println("Terminal State OK!  Exiting Normally")
+			panic(err)
+		} else {
+			fmt.Printf("Terminal State Changed!\n[Current State: %v]\n[Original State :%v] Reverting before Exiting\n", *termState.curState, *termState.termState)
+			err = terminal.Restore(int(syscall.Stdin), termState.termState)
+			panic(err)
+		}
 	}()
 
 	// complete actions which do not require HSM
@@ -226,10 +224,10 @@ func main() {
 		p11Lib, err = searchForLib(*pkcs11Library)
 		exitWhenError(err)
 	}
-        if *slotPin =="" {
+	if *slotPin == "" {
 		p11Pin, err = termState.askForPin(*less)
-		if err !=nil {
-                 exitWhenError(err)
+		if err != nil {
+			exitWhenError(err)
 		}
 	} else {
 		p11Pin = *slotPin
