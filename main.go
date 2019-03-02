@@ -13,8 +13,6 @@ import (
 	"os/signal"
 	"time"
 	"golang.org/x/crypto/ssh/terminal"
-//	"golang.org/x/sys/unix"
-
 	"github.com/miekg/pkcs11"
 	pw "github.com/scottallan/p11tool-new/pkcs11wrapper"
 )
