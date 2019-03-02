@@ -161,9 +161,20 @@ func main() {
 	fmt.Printf("Terminal State %v \n", termState.termState)
 	go func() {
 		sig := <-gracefulStop
-		        //unix.IoctlSetTermios(int(syscall.Stdin), ioctlWriteTermios, termios)
+				var err error
 				fmt.Printf("\n**********caught signal: %+v  EXITING\n", sig)
-				fmt.Printf("Terminal State %v \n", termState.termState)
+				termState.curState, err := terminal.GetState(int(syscall.Stdin))
+				if err != nil {
+					panic(err)
+				}
+				if termState.curState == termState.termState {
+					fmt.Println("Terminal State OK!  Exiting Normally")
+					panic(err)
+				} else {
+					fmt.Println("Terminal State Changed! Reverting before Existing")
+					err = terminal.Restore(int(syscall.Stdin), termState.termState)
+					panic(err)
+				}
 	}()
 
 	// complete actions which do not require HSM
