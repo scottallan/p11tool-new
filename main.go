@@ -13,7 +13,7 @@ import (
 	"os/signal"
 	"time"
 	"golang.org/x/crypto/ssh/terminal"
-	"golang.org/x/sys/unix"
+//	"golang.org/x/sys/unix"
 
 	"github.com/miekg/pkcs11"
 	pw "github.com/scottallan/p11tool-new/pkcs11wrapper"
@@ -153,14 +153,15 @@ func main() {
 	}()
 	flag.Parse()
 
-	termState := termInfo{}
-	//Neet to Get State of the Existing Terminal
-	//_, err := unix.IoctlGetTermios(int(syscall.Stdin), ioctlReadTermios)
-	termInfo.termState, err := terminal.GetState(int(syscall.Stdin))
-	fmt.Printf("Terminal State %v \n", termInfo.termState)
 
 
 	var err error
+	termState := termInfo{}
+	//Neet to Get State of the Existing Terminal
+	//_, err := unix.IoctlGetTermios(int(syscall.Stdin), ioctlReadTermios)
+	tState, err := terminal.GetState(int(syscall.Stdin))
+	termState.termState = tState
+	fmt.Printf("Terminal State %v \n", termState.termState)
 
 	// complete actions which do not require HSM
 	switch *action {
