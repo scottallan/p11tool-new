@@ -1251,7 +1251,21 @@ func (p11w *Pkcs11Wrapper) WrapP11Key(wrapKeyType string, objClass string, keyLa
 				fmt.Printf("Successfully Wrapped key %v", p11ObjHandlers[0])
 			}
 		case "AES":
-		    fmt.Printf("Need to Implement EC Key Wrapping")
+			fmt.Printf("Need to Implement EC Key Wrapping")
+			wrappedKey, err = p11w.Context.WrapKey(
+				p11w.Session,
+				[]*pkcs11.Mechanism{
+					pkcs11.NewMechanism(pkcs11.CKM_AES_KEY_WRAP, make([]byte, 8)),
+				},
+				w,
+				p11ObjHandlers[0],
+			)
+			if err != nil {
+				fmt.Errorf("Unable to Wrap Key %v", err)
+				return nil, err
+			} else {
+				fmt.Printf("Successfully Wrapped key %v", p11ObjHandlers[0])
+			}
 		}
 	} else {
 		fmt.Errorf("expected a single object.... exiting")
