@@ -1250,7 +1250,7 @@ func (p11w *Pkcs11Wrapper) WrapP11Key(wrapKeyType string, objClass string, keyLa
 			} else {
 				fmt.Printf("Successfully Wrapped key %v", p11ObjHandlers[0])
 			}
-		case "AES"
+		case "AES":
 		    fmt.Printf("Need to Implement EC Key Wrapping")
 		}
 	} else {
