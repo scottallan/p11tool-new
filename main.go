@@ -396,7 +396,8 @@ func main() {
 		exitWhenError(err)
 
 		var wrappedKey []byte
-		if *keyType == "RSA" {
+		switch *keyType {
+		case "RSA":
 			wrappedKey, err = p11w.WrapP11Key(*objClass, *keyLabel, w[0], *byCKAID)
 			exitWhenError(err)
 			decryptedKey, err := p11w.DecryptP11Key(wrappedKey, w[0])
@@ -419,6 +420,8 @@ func main() {
 			if err != nil {
 				return
 			}
+		case "EC":
+			fmt.Printf("Need to Implement EC Key Wrapping")
 
 		}
 
