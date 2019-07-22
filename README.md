@@ -262,7 +262,7 @@ p11tool-new --action  wrapKeyWithDES3 -slot <slot> -pin <pin> -lib /opt/nfast/to
 
 Note by default the passed in keyLable is used to find the key from the CKA_LABEL attribute.  If you need to seach by the CKA_ID attribute you can pass in the -byCKAID flag:
 
-p11tool-new --action  wrapKeyWithDES3 -slot <slot> -pin <pin> -lib /opt/nfast/toolkits/pkcs11/libcknfast.so -keyLabel <keyLabel> -objClass CKO_PRIVATE_KEY -wrapKey <wrappingKeyLabel> -keyType RSA -noDec true -outFile <outFileName> -byCKAID 
+p11tool-new --action  wrapKeyWithDES3 -slot <slot> -pin <pin> -lib /opt/nfast/toolkits/pkcs11/libcknfast.so -keyLabel <keyLabel> -objClass CKO_PRIVATE_KEY -wrapKey <wrappingKeyLabel> -keyType RSA -noDec true -outFile <outFileName> -byCKAID
 
 
 ```
