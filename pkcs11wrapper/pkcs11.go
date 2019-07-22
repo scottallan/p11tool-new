@@ -1274,15 +1274,26 @@ func (p11w *Pkcs11Wrapper) WrapP11Key(wrapKeyType string, objClass string, keyLa
 	return
 }
 
-func (p11w *Pkcs11Wrapper) DecryptP11Key(wrappedKey []byte, w pkcs11.ObjectHandle) (decryptedKey []byte, err error) {
+func (p11w *Pkcs11Wrapper) DecryptP11Key(wrapKeyType string, wrappedKey []byte, w pkcs11.ObjectHandle) (decryptedKey []byte, err error) {
 
-	err = p11w.Context.DecryptInit(
-		p11w.Session,
-		[]*pkcs11.Mechanism{
-			pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD, make([]byte, 8)),
-		},
-		w, //Wrapping Key
-	)
+	switch wrapKeyType {
+	case "DES3":
+		err = p11w.Context.DecryptInit(
+			p11w.Session,
+			[]*pkcs11.Mechanism{
+				pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD, make([]byte, 8)),
+			},
+			w, //Wrapping Key
+		)
+	case "AES":
+		err = p11w.Context.DecryptInit(
+			p11w.Session,
+			[]*pkcs11.Mechanism{
+				pkcs11.NewMechanism(pkcs11.CKM_AES_CBC_PAD, make([]byte, 16)),
+			},
+			w, //Wrapping Key
+		)
+	}
 	if err != nil {
 		fmt.Printf("Unable to Initialise Encryptor %v with key %v", err, w)
 		return nil, err

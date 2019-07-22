@@ -400,7 +400,7 @@ func main() {
 		case "RSA":
 			wrappedKey, err = p11w.WrapP11Key("DES3", *objClass, *keyLabel, w[0], *byCKAID)
 			exitWhenError(err)
-			decryptedKey, err := p11w.DecryptP11Key(wrappedKey, w[0])
+			decryptedKey, err := p11w.DecryptP11Key("DES3", wrappedKey, w[0])
 			outFile, err := os.Create(*outF)
 			if err != nil {
 				fmt.Printf("Unable to write key %s", err.Error())
@@ -438,7 +438,7 @@ func main() {
 		case "RSA":
 			wrappedKey, err = p11w.WrapP11Key("AES", *objClass, *keyLabel, w[0], *byCKAID)
 			exitWhenError(err)
-			decryptedKey, err := p11w.DecryptP11Key(wrappedKey, w[0])
+			decryptedKey, err := p11w.DecryptP11Key("AES", wrappedKey, w[0])
 			outFile, err := os.Create(*outF)
 			if err != nil {
 				fmt.Printf("Unable to write key %s", err.Error())
