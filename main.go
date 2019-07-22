@@ -398,7 +398,45 @@ func main() {
 		var wrappedKey []byte
 		switch *keyType {
 		case "RSA":
-			wrappedKey, err = p11w.WrapP11Key(*objClass, *keyLabel, w[0], *byCKAID)
+			wrappedKey, err = p11w.WrapP11Key("DES3", *objClass, *keyLabel, w[0], *byCKAID)
+			exitWhenError(err)
+			decryptedKey, err := p11w.DecryptP11Key(wrappedKey, w[0])
+			outFile, err := os.Create(*outF)
+			if err != nil {
+				fmt.Printf("Unable to write key %s", err.Error())
+				return
+			}
+			defer outFile.Close()
+
+			fmt.Printf("writing key to %s\n", *outF)
+			if *noDec {
+				fmt.Printf("writing encrypted\n?")
+				err = ioutil.WriteFile(*outF, wrappedKey, 0644)
+			} else {
+				fmt.Printf("writing decrypted\n")
+				err = ioutil.WriteFile(*outF, decryptedKey, 0644)
+			}
+
+			if err != nil {
+				return
+			}
+		case "EC":
+			fmt.Printf("Need to Implement EC Key Wrapping")
+
+		}
+	
+	case "wrapKeyWithAES":
+		w, _, err := p11w.FindObjects([]*pkcs11.Attribute{
+			pkcs11.NewAttribute(pkcs11.CKA_LABEL, *wrapKey),
+		},
+			1,
+		)
+		exitWhenError(err)
+
+		var wrappedKey []byte
+		switch *keyType {
+		case "RSA":
+			wrappedKey, err = p11w.WrapP11Key("AES", *objClass, *keyLabel, w[0], *byCKAID)
 			exitWhenError(err)
 			decryptedKey, err := p11w.DecryptP11Key(wrappedKey, w[0])
 			outFile, err := os.Create(*outF)

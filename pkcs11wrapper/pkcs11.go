@@ -1177,7 +1177,7 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle, wrapp
 
 }
 
-func (p11w *Pkcs11Wrapper) WrapP11Key(objClass string, keyLabel string, w pkcs11.ObjectHandle, keyByID bool) (wrappedKey []byte, err error) {
+func (p11w *Pkcs11Wrapper) WrapP11Key(wrapKeyType string, objClass string, keyLabel string, w pkcs11.ObjectHandle, keyByID bool) (wrappedKey []byte, err error) {
 
 	var keyTemplate []*pkcs11.Attribute
 	var keyID []*pkcs11.Attribute
@@ -1234,19 +1234,24 @@ func (p11w *Pkcs11Wrapper) WrapP11Key(objClass string, keyLabel string, w pkcs11
 			return nil, err
 		}
 		fmt.Printf("wrapping object %v out of hms with %s\n", p11ObjHandlers[0], wrappKeyLabel[0].Value)
-		wrappedKey, err = p11w.Context.WrapKey(
-			p11w.Session,
-			[]*pkcs11.Mechanism{
-				pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD, make([]byte, 8)),
-			},
-			w,
-			p11ObjHandlers[0],
-		)
-		if err != nil {
-			fmt.Errorf("Unable to Wrap Key %v", err)
-			return nil, err
-		} else {
-			fmt.Printf("Successfully Wrapped key %v", p11ObjHandlers[0])
+		switch wrapKeyType {
+		case "DES3":
+			wrappedKey, err = p11w.Context.WrapKey(
+				p11w.Session,
+				[]*pkcs11.Mechanism{
+					pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD, make([]byte, 8)),
+				},
+				w,
+				p11ObjHandlers[0],
+			)
+			if err != nil {
+				fmt.Errorf("Unable to Wrap Key %v", err)
+				return nil, err
+			} else {
+				fmt.Printf("Successfully Wrapped key %v", p11ObjHandlers[0])
+			}
+		case "AES"
+		    fmt.Printf("Need to Implement EC Key Wrapping")
 		}
 	} else {
 		fmt.Errorf("expected a single object.... exiting")
