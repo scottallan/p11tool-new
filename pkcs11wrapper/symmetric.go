@@ -123,7 +123,7 @@ func (p11w *Pkcs11Wrapper) GetSymPkcs11Template(objectLabel string, keyLen int, 
 		pkcs11KeyType = []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_DES3),
 		}
-		if SymKeyLength != 0 { //CloudHSM does not set keyLen on DES3...
+		if SymKeyLength != 0 { //CloudHSM and SoftHSM does not set keyLen on DES3...
 			pkcs11VendorAttr = []*pkcs11.Attribute{
 				pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
 				pkcs11.NewAttribute(pkcs11.CKA_PRIVATE, true),
