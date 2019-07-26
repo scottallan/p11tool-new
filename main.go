@@ -141,6 +141,8 @@ func main() {
 
 	byCKAID := flag.Bool("byCKAID", false, "when set we will assume keyLabel is a CKA_ID represented as a string")
 
+	mechOver := flag.String("mechanismOverride", "", "Allow override of mechanism - only supported on certain operations [wrapKeyWithDES3, wrapKeyWithAES]")
+
 	maxObjectsToList := flag.Int("maxObjectsToList", 50, "Paramter to be used with -action list to specify how many objects to print")
 
 	var gracefulStop = make(chan os.Signal)
@@ -398,9 +400,9 @@ func main() {
 		var wrappedKey []byte
 		switch *keyType {
 		case "RSA":
-			wrappedKey, err = p11w.WrapP11Key("DES3", *objClass, *keyLabel, w[0], *byCKAID)
+			wrappedKey, err = p11w.WrapP11Key("DES3", *objClass, *keyLabel, w[0], *byCKAID, *mechOver)
 			exitWhenError(err)
-			decryptedKey, err := p11w.DecryptP11Key("DES3", wrappedKey, w[0])
+			decryptedKey, err := p11w.DecryptP11Key("DES3", wrappedKey, w[0], *mechOver)
 			outFile, err := os.Create(*outF)
 			if err != nil {
 				fmt.Printf("Unable to write key %s", err.Error())
@@ -436,9 +438,9 @@ func main() {
 		var wrappedKey []byte
 		switch *keyType {
 		case "RSA":
-			wrappedKey, err = p11w.WrapP11Key("AES", *objClass, *keyLabel, w[0], *byCKAID)
+			wrappedKey, err = p11w.WrapP11Key("AES", *objClass, *keyLabel, w[0], *byCKAID, *mechOver)
 			exitWhenError(err)
-			decryptedKey, err := p11w.DecryptP11Key("AES", wrappedKey, w[0])
+			decryptedKey, err := p11w.DecryptP11Key("AES", wrappedKey, w[0], *mechOver)
 			outFile, err := os.Create(*outF)
 			if err != nil {
 				fmt.Printf("Unable to write key %s", err.Error())

@@ -148,6 +148,11 @@ type AttributeRequest struct {
 	Optional bool   `json:"optional,omitempty"`
 }
 
+type NewMechanism struct {
+	p11Mech		uint
+	mechParam	[]byte
+}
+
 const (
 	privateKeyFlag = true
 	publicKeyFlag  = false
@@ -157,6 +162,8 @@ const (
 var CKA_KEY_TYPE_MAP map[byte]string
 var CKA_CLASS_MAP map[uint]string
 var CKA_PKCS11_CLASS_MAP map[string]uint
+var CKM_MECH_MAP map[string]uint
+var CKM_NEWMECH_MAP map[string]NewMechanism
 
 func init() {
 
@@ -188,6 +195,20 @@ func init() {
 		"CKO_PUBLIC_KEY":  pkcs11.CKO_PUBLIC_KEY,
 		"CKO_SECRET_KEY":  pkcs11.CKO_SECRET_KEY,
 		"CKO_CERTIFICATE": pkcs11.CKO_CERTIFICATE,
+	}
+
+	//Setup Mechanism MAP as String
+	CKM_MECH_MAP = map[string]uint{
+		"CKM_AES_CBC_PAD": pkcs11.CKM_AES_CBC_PAD,
+		"CKM_AES_KEY_WRAP_PAD": pkcs11.CKM_AES_KEY_WRAP_PAD,
+		"CKM_AES_KEY_WRAP": pkcs11.CKM_AES_KEY_WRAP,
+	}
+
+	//Setup NewMechanism MAP as String
+	CKM_NEWMECH_MAP = map[string]NewMechanism{
+		"CKM_AES_CBC_PAD": {pkcs11.CKM_AES_CBC_PAD, make([]byte, 16)},
+		"CKM_AES_KEY_WRAP_PAD": {pkcs11.CKM_AES_KEY_WRAP_PAD, make([]byte, 16)},
+		"CKM_AES_KEY_WRAP": {pkcs11.CKM_AES_KEY_WRAP, nil},
 	}
 }
 
@@ -528,6 +549,24 @@ func decodeP11Class(s string) uint {
 		return val
 	} else {
 		return 0
+	}
+}
+
+func decodeP11Mech(s string, t string) NewMechanism {
+        var defaultMech NewMechanism
+	switch t {
+	case "DES3":
+		defaultMech = NewMechanism{pkcs11.CKM_DES3_CBC_PAD, make([]byte, 8)}
+	case "AES":
+		defaultMech = NewMechanism{pkcs11.CKM_AES_CBC_PAD, make([]byte, 16)}
+	default:
+		defaultMech = NewMechanism{pkcs11.CKM_DES3_CBC_PAD, make([]byte, 8)}
+	}
+	val, present := CKM_NEWMECH_MAP[s]
+	if present {
+		return val
+	}else{
+		return defaultMech
 	}
 }
 
@@ -1177,7 +1216,7 @@ func (p11w *Pkcs11Wrapper) UnwrapECKey(ec EcdsaKey, w pkcs11.ObjectHandle, wrapp
 
 }
 
-func (p11w *Pkcs11Wrapper) WrapP11Key(wrapKeyType string, objClass string, keyLabel string, w pkcs11.ObjectHandle, keyByID bool) (wrappedKey []byte, err error) {
+func (p11w *Pkcs11Wrapper) WrapP11Key(wrapKeyType string, objClass string, keyLabel string, w pkcs11.ObjectHandle, keyByID bool, mechOver string) (wrappedKey []byte, err error) {
 
 	var keyTemplate []*pkcs11.Attribute
 	var keyID []*pkcs11.Attribute
@@ -1236,10 +1275,13 @@ func (p11w *Pkcs11Wrapper) WrapP11Key(wrapKeyType string, objClass string, keyLa
 		fmt.Printf("wrapping object %v out of hms with %s\n", p11ObjHandlers[0], wrappKeyLabel[0].Value)
 		switch wrapKeyType {
 		case "DES3":
+			myMech := decodeP11Mech(mechOver, "DES3")
+			fmt.Printf("selected mechanism %v\n",decodeP11Mech(mechOver, "DES3"))
 			wrappedKey, err = p11w.Context.WrapKey(
 				p11w.Session,
 				[]*pkcs11.Mechanism{
-					pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD, make([]byte, 8)),
+					pkcs11.NewMechanism(myMech.p11Mech, myMech.mechParam),
+				//	pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD, make([]byte, 8)),
 				},
 				w,
 				p11ObjHandlers[0],
@@ -1251,11 +1293,13 @@ func (p11w *Pkcs11Wrapper) WrapP11Key(wrapKeyType string, objClass string, keyLa
 				fmt.Printf("Successfully Wrapped key %v", p11ObjHandlers[0])
 			}
 		case "AES":
-			fmt.Printf("Need to Implement EC Key Wrapping\n")
+			myMech := decodeP11Mech(mechOver, "AES")
+			fmt.Printf("selected mechanism %v\n",decodeP11Mech(mechOver, "AES"))
 			wrappedKey, err = p11w.Context.WrapKey(
 				p11w.Session,
 				[]*pkcs11.Mechanism{
-					pkcs11.NewMechanism(pkcs11.CKM_AES_CBC_PAD, make([]byte, 16)),
+					pkcs11.NewMechanism(myMech.p11Mech, myMech.mechParam),
+					//pkcs11.NewMechanism(pkcs11.CKM_AES_CBC_PAD, make([]byte, 16)),
 				},
 				w,
 				p11ObjHandlers[0],
@@ -1274,14 +1318,16 @@ func (p11w *Pkcs11Wrapper) WrapP11Key(wrapKeyType string, objClass string, keyLa
 	return
 }
 
-func (p11w *Pkcs11Wrapper) DecryptP11Key(wrapKeyType string, wrappedKey []byte, w pkcs11.ObjectHandle) (decryptedKey []byte, err error) {
+func (p11w *Pkcs11Wrapper) DecryptP11Key(wrapKeyType string, wrappedKey []byte, w pkcs11.ObjectHandle, mechOver string) (decryptedKey []byte, err error) {
 
 	switch wrapKeyType {
 	case "DES3":
+		myMech := decodeP11Mech(mechOver, "DES3")
 		err = p11w.Context.DecryptInit(
 			p11w.Session,
 			[]*pkcs11.Mechanism{
-				pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD, make([]byte, 8)),
+				pkcs11.NewMechanism(myMech.p11Mech, myMech.mechParam),
+				//pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD, make([]byte, 8)),
 			},
 			w, //Wrapping Key
 		)
@@ -1289,7 +1335,8 @@ func (p11w *Pkcs11Wrapper) DecryptP11Key(wrapKeyType string, wrappedKey []byte, 
 		err = p11w.Context.DecryptInit(
 			p11w.Session,
 			[]*pkcs11.Mechanism{
-				pkcs11.NewMechanism(pkcs11.CKM_AES_CBC_PAD, make([]byte, 16)),
+				pkcs11.NewMechanism(pkcs11.CKM_AES_ECB, nil),
+				//pkcs11.NewMechanism(pkcs11.CKM_AES_CBC_PAD, make([]byte, 16)),
 			},
 			w, //Wrapping Key
 		)
