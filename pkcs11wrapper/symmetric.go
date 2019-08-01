@@ -127,8 +127,22 @@ func (p11w *Pkcs11Wrapper) WrapSymKey(keyType string, key string, keyLen int, w 
 	return
 }
 
-func (p11w *Pkcs11Wrapper) UnwrapSymKey(wrappedKey []byte, w pkcs11.ObjectHandle, keyLable string) (err error) {
+func (p11w *Pkcs11Wrapper) UnwrapSymKey(keyType string, wrappedKey []byte, w pkcs11.ObjectHandle, keyLable string) (err error) {
 
+	getAttr := p11w.GetSymPkcs11Template(keyLabel, len(wrappedKey), keyType)
+	pkcs11KeyValue := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_VALUE, n.Bytes()),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
+	}
+	getAttr = append(getAttr, pkcs11KeyValue...)
+	_, err = p11w.Context.CreateObject(
+		p11w.Session,
+		getAttr,
+	)
+	if err != nil {
+		ExitWithMessage("Unable to Import Key", err)
+	}
 	return
 }
 
