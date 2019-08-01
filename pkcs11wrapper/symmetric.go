@@ -91,6 +91,52 @@ func (p11w *Pkcs11Wrapper) CreateSymKey(objectLabel string, keyLen int, keyType 
 	return
 }
 
+//WrapSymKey is used to wrap a non HSM protected symmetric key with a HSM protected wrapping key
+func (p11w *Pkcs11Wrapper) WrapSymKey(keyType string, key string, keyLen int, w pkcs11.ObjectHandle) (wrappedKey []byte, err error) {
+	
+	if key == nil {
+		err = errors.New("No Key Found To Wrap")
+	}
+
+	n := new(big.Int)
+	
+	n, ok := n.SetString(key, 16)
+	if !ok {
+		ExitWithMessage("BigInt SetString:", nil)
+	}
+	fmt.Printf("Setting Key to %v from string %s", n, key)
+	err = p11w.Context.EncryptInit(
+		p11w.Session,
+		[]*pkcs11.Mechanism{
+				//pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,make([]byte, 8)),
+				pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD, make([]byte, 8)),
+		},
+		w, //Wrapping Key
+	)
+	if err != nil {
+			fmt.Printf("Unable to Initialise Encryptor %v with key %v", err, w)
+			return nil, err
+	}
+	wrappedKey, err = p11w.Context.Encrypt(
+			p11w.Session,
+			//ec.pk8.PrivateKey,
+			key,
+	)
+	if err != nil {
+			fmt.Printf("Unable to Encrypt Key : %v", err)
+			return nil, err
+	}
+
+	fmt.Printf("Wrapped Key with CKM_DES3_CBS with wrappedKey %v from SymKey %v\n", wrappedKey, key)
+
+	return
+}
+
+fun (p11w *Pkcs11Wrapper) UnwrapSymKey(wrappedKey []byte, w pkcs11.ObjectHandle, keyLable string) (err error) {
+
+	return
+}
+
 /* return a set of attributes that we require for our aes key */
 func (p11w *Pkcs11Wrapper) GetSymPkcs11Template(objectLabel string, keyLen int, keyType string) (SymPkcs11Template []*pkcs11.Attribute) {
 
