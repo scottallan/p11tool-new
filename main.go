@@ -393,6 +393,9 @@ func main() {
 			   fmt.Printf("Unable to Wrap key: %v\n", *key)
 		   }
 		   fmt.Printf("Wrapped Key to Value: %v\n", wrappedKey)
+		   //Unwrap key onto HSM
+		   err := p11w.UnwrapSymKey(wrappedKey, w[0], *keyLabel)
+		   exitWhenError(err)
 		}
 
 	case "wrapKeyWithDES3":
