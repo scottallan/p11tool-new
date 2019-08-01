@@ -135,9 +135,16 @@ func (p11w *Pkcs11Wrapper) UnwrapSymKey(keyType string, wrappedKey []byte, w pkc
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
 	}
+	
 	getAttr = append(getAttr, pkcs11KeyValue...)
-	_, err = p11w.Context.CreateObject(
+
+	_, err = p11w.Context.UnwrapKey(
 		p11w.Session,
+		[]*pkcs11.Mechanism{
+		pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,nil),
+		},
+		w,
+		wrappedKey,
 		getAttr,
 	)
 	if err != nil {
