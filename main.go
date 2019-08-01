@@ -387,8 +387,12 @@ func main() {
 		case "RSA":
 			err := p11w.UnWrapRSAKeyFromFile(*keyFile, *keyStore, *keyStorepass, *keyLabel, w[0])
 			exitWhenError(err)
-		case "AES"
-		   wrappedKey, err := p11w.WrapSymKey("AES", *Key, *keyLen, w)
+		case "AES":
+		   wrappedKey, err := p11w.WrapSymKey("AES", *key, *keyLen, w[0])
+		   if err != nil {
+			   fmt.Printf("Unable to Wrap key: %v\n", *key)
+		   }
+		   fmt.Printf("Wrapped Key to Value: %v\n", wrappedKey)
 		}
 
 	case "wrapKeyWithDES3":
