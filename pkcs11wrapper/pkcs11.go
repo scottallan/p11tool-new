@@ -1958,8 +1958,8 @@ func (p11w *Pkcs11Wrapper) newCertificateRequest(req *CSRInfo) *CertificateReque
 	return &cr
 }
 
-func newCfsslBasicKeyRequest(bkr *BasicP11Request) *csr.BasicKeyRequest {
-	return &csr.BasicKeyRequest{A: bkr.A, S: bkr.S}
+func newCfsslBasicKeyRequest(bkr *BasicP11Request) *csr.KeyRequest {
+	return &csr.KeyRequest{A: bkr.A, S: bkr.S}
 }
 
 //TODO implement Public() for crypto.signer
