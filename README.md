@@ -5,6 +5,8 @@
 ### Building Tool
 
 ```
+p11tool requires go 1.13
+
 go get github.com/scottallan/p11tool-new
 
 # OR
