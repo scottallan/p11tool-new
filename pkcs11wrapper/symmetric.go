@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"os"
 	"strconv"
+	"fmt"
 
 	"github.com/miekg/pkcs11"
 )
@@ -127,13 +128,24 @@ func (p11w *Pkcs11Wrapper) WrapSymKey(keyType string, key string, keyLen int, w 
 	return
 }
 
-func (p11w *Pkcs11Wrapper) UnwrapSymKey(keyType string, wrappedKey []byte, w pkcs11.ObjectHandle, keyLable string) (err error) {
+func (p11w *Pkcs11Wrapper) UnwrapSymKey(keyType string, wrappedKey []byte, w pkcs11.ObjectHandle, keyLabel string) (err error) {
 
-	getAttr := p11w.GetSymPkcs11Template(keyLabel, len(wrappedKey), keyType)
-	pkcs11KeyValue := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_VALUE, n.Bytes()),
+	var getAttr []*pkcs11.Attribute
+	var pkcs11KeyValue []*pkcs11.Attribute
+	fmt.Printf("len of key %v\n", len(wrappedKey))
+	switch keyType {
+	case "AES":	
+		getAttr = p11w.GetSymPkcs11Template(keyLabel, len(wrappedKey)-8, keyType)
+		pkcs11KeyValue = []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
+		}	
+	default:
+		getAttr = p11w.GetSymPkcs11Template(keyLabel, len(wrappedKey)-8, "AES")
+                pkcs11KeyValue = []*pkcs11.Attribute{
+                pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
+                pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_SECRET_KEY),
+                }
 	}
 	
 	getAttr = append(getAttr, pkcs11KeyValue...)
@@ -141,7 +153,7 @@ func (p11w *Pkcs11Wrapper) UnwrapSymKey(keyType string, wrappedKey []byte, w pkc
 	_, err = p11w.Context.UnwrapKey(
 		p11w.Session,
 		[]*pkcs11.Mechanism{
-		pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC,nil),
+		pkcs11.NewMechanism(pkcs11.CKM_DES3_CBC_PAD, make([]byte, 8)),
 		},
 		w,
 		wrappedKey,

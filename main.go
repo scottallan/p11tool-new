@@ -394,7 +394,7 @@ func main() {
 		   }
 		   fmt.Printf("Wrapped Key to Value: %v\n", wrappedKey)
 		   //Unwrap key onto HSM
-		   err := p11w.UnwrapSymKey("AES", wrappedKey, w[0], *keyLabel)
+		   err = p11w.UnwrapSymKey("AES", wrappedKey, w[0], *keyLabel)
 		   exitWhenError(err)
 		}
 
