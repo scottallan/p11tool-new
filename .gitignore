@@ -1,2 +1,4 @@
 **/IGNORED
 out.pem
+.DS_Store
+p11tool-new
